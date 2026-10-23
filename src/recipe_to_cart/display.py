@@ -23,7 +23,10 @@ _PLURALS = {"box": "boxes", "bunch": "bunches", "pinch": "pinches", "dash": "das
 
 def format_quantity(q: float) -> str:
     """0.333 -> "1/3", 1.5 -> "1 1/2", 2.0 -> "2"."""
-    frac = Fraction(q).limit_denominator(8)
+    # Only kitchen fractions: halves, thirds, quarters, eighths.
+    frac = min(
+        (Fraction(round(q * d), d) for d in (1, 2, 3, 4, 8)), key=lambda f: abs(float(f) - q)
+    )
     if abs(float(frac) - q) > 0.02:
         return f"{q:.2f}".rstrip("0").rstrip(".")
     whole, rest = divmod(frac.numerator, frac.denominator)
