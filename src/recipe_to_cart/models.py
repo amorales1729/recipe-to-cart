@@ -37,7 +37,6 @@ class GroceryItem:
 
     @property
     def amount_text(self) -> str:
-        if self.quantity is None:
-            return "as needed"
-        q = f"{self.quantity:g}" if self.quantity == int(self.quantity) else f"{self.quantity:.2f}".rstrip("0")
-        return f"{q} {self.unit}".strip()
+        from .display import format_amount
+
+        return format_amount(self.quantity, self.unit) or "as needed"

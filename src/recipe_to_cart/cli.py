@@ -7,6 +7,7 @@ from pathlib import Path
 
 from . import extract
 from .db import ProductChoice, Store, app_home
+from .display import format_amount
 from .grocery import build_grocery_list
 from .models import GroceryItem, Recipe
 from .stores.base import Product, pick_product
@@ -110,7 +111,7 @@ def cmd_delete(store: Store, args) -> int:
 def print_recipe(recipe: Recipe) -> None:
     print("\nIngredients:")
     for g in recipe.ingredients:
-        amount = f"{g.quantity:g} {g.unit}".strip() if g.quantity is not None else ""
+        amount = format_amount(g.quantity, g.unit)
         extra = f"  ({g.prep})" if g.prep else ""
         print(f"  - {amount:<14} {g.name}{extra}")
     print("\nInstructions:")
