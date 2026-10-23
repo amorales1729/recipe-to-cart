@@ -6,7 +6,18 @@ import re
 from .models import GroceryItem, Recipe
 from .units import to_quantity
 
-DEFAULT_PANTRY = ["salt", "pepper", "black pepper", "water", "ice"]
+DEFAULT_PANTRY = ["water", "ice"]
+
+# Plain salt and black pepper never go on a grocery list. Other peppers (bell, jalapeno,
+# cayenne, red pepper flakes) are real groceries and are kept.
+_ALWAYS_EXCLUDED = re.compile(
+    r"^(?:(?:kosher|sea|table|fine|coarse|flaky|iodized)\s+)?salt$"
+    r"|^(?:(?:fresh|freshly)\s+)?(?:(?:ground|cracked)\s+)?(?:black\s+)?pepper$"
+)
+
+
+def is_always_excluded(name: str) -> bool:
+    return bool(_ALWAYS_EXCLUDED.match(ingredient_key(name)))
 
 
 def ingredient_key(name: str) -> str:
@@ -33,7 +44,7 @@ def build_grocery_list(recipes: list[Recipe], pantry: list[str] | None = None) -
     for recipe in recipes:
         for ing in recipe.ingredients:
             key = ingredient_key(ing.name)
-            if not key:
+            if not key or is_always_excluded(ing.name):
                 continue
             existing = next(
                 (it for it in items if it.key == key and _can_merge(it, ing.quantity, ing.unit)), None

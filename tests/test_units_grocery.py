@@ -1,4 +1,4 @@
-from recipe_to_cart.grocery import build_grocery_list, ingredient_key
+from recipe_to_cart.grocery import build_grocery_list, ingredient_key, is_always_excluded
 from recipe_to_cart.models import Ingredient, Recipe
 from recipe_to_cart.units import packages_needed, parse_size
 
@@ -49,5 +49,16 @@ def test_grocery_merge_and_pantry():
     assert broth.unit == "cup" and abs(broth.quantity - 8) < 0.01
     assert broth.sources == ["Soup", "Stew"]
     assert items["onion"].quantity == 3
-    assert items["salt"].skip_reason == "pantry"
+    assert "salt" not in items  # never listed at all
     assert items["carrot"].skip_reason == ""
+
+
+def test_salt_and_black_pepper_never_listed_but_other_peppers_are():
+    for name in ["Salt", "kosher salt", "Sea Salt", "Pepper", "black pepper", "Ground Black Pepper",
+                 "freshly ground black pepper", "cracked black pepper"]:
+        assert is_always_excluded(name), name
+    for name in ["Green Bell Peppers", "red bell pepper", "Fresh Jalapenos", "cayenne pepper",
+                 "red pepper flakes", "poblano pepper", "white pepper", "Salted Butter", "seasoned salt"]:
+        assert not is_always_excluded(name), name
+    r = _recipe("Soup", ("Salt", None, ""), ("Pepper", None, ""), ("Green Bell Peppers", 2, ""))
+    assert [i.name for i in build_grocery_list([r])] == ["Green Bell Peppers"]

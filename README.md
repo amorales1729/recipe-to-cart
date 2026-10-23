@@ -54,6 +54,9 @@ rtc pantry add "olive oil" "garlic powder"   # things you already have; skipped 
 rtc cart 1 2             # fill your Walmart cart for recipes 1 and 2
 ```
 
+Salt and black pepper are never put on a grocery list. Other peppers (bell, jalapeño, cayenne,
+red pepper flakes) are.
+
 ### What `rtc cart` does
 
 1. Opens an Edge window with its own profile. **The first time, sign in to Walmart in that window**

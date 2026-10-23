@@ -49,9 +49,9 @@ def test_store_roundtrip(tmp_path):
     s.save_choice("walmart", "cream", ProductChoice("222", "GV Cream 32 fl oz", "https://x/222"))
     assert s.get_choice("walmart", "cream").product_id == "222"
 
-    assert "salt" in s.pantry()
-    s.remove_pantry("salt")
+    assert "water" in s.pantry()
+    s.remove_pantry("water")
     s.close()
     s2 = Store(tmp_path / "t.db")  # removing a default pantry item sticks after reopening
-    assert "salt" not in s2.pantry()
+    assert "water" not in s2.pantry()
     assert s2.delete_recipe(rid) and s2.get_recipe(rid) is None
