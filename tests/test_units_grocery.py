@@ -76,14 +76,15 @@ def test_spice_rack_vs_groceries():
         "1 tsp ground cumin", "2 tsp chili powder", "1/2 tsp smoked paprika", "1 tsp garlic powder",
         "1 tsp dried oregano", "1 tsp oregano", "2 bay leaves", "1/4 tsp red pepper flakes",
         "1/4 tsp cayenne pepper", "1 tbsp Italian seasoning", "2 tbsp taco seasoning",
-        "1/2 tsp ground cinnamon", "pinch of nutmeg", "1 tsp dried thyme",
+        "1/2 tsp ground cinnamon", "pinch of nutmeg", "1 tsp dried thyme", "1/2 tsp ground ginger",
+        "1 tsp cumin",
     ]
     groceries = [
         "1 packet taco seasoning", "1 (1 oz) envelope taco seasoning", "1 packet brown gravy mix",
         "1 envelope onion soup mix", "4 tbsp. Minced Fresh Oregano", "1/4 cup chopped cilantro",
         "3 cloves garlic, minced", "1 tbsp grated fresh ginger", "2 sprigs fresh thyme",
         "2 whole Green Bell Peppers, Diced", "2 whole Fresh Jalapenos", "1 cup fresh basil leaves",
-        "2 lbs beef chuck",
+        "2 lbs beef chuck", "1 inch piece ginger, grated", "1 tbsp yellow mustard", "1 tbsp mustard",
     ]
     for raw in spices:
         assert _cat(raw) == "spice", raw

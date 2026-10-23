@@ -57,7 +57,7 @@ def is_spice(name: str, unit: str = "", raw: str = "") -> bool:
         return False  # fresh herbs are produce
     key = _key(name)
     stripped = re.sub(r"^(ground|dried|whole|crushed|smoked|sweet|hot|mild)\s+", "", key)
-    if key in _SPICES or stripped in _SPICES or f"ground {stripped}" in _SPICES:
+    if key in _SPICES or (stripped != key and stripped in _SPICES):
         return True
     if stripped in _DRIED_BY_DEFAULT:
         return bool(re.search(r"\b(dried|ground)\b", text)) or unit in _SMALL_UNITS
