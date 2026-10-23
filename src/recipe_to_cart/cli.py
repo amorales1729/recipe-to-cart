@@ -133,10 +133,22 @@ def cmd_groceries(store: Store, args) -> int:
     recipes = _load(store, args.ids)
     if recipes is None:
         return 1
-    for item in build_grocery_list(recipes, store.pantry()):
-        mark = "  (pantry, skipped)" if item.skip_reason else ""
-        print(f"  [{' ' if item.skip_reason else 'x'}] {item.amount_text:<16} {item.name}{mark}")
+    items = build_grocery_list(recipes, store.pantry())
+    print("Grocery list (goes to the cart):")
+    for item in items:
+        if item.category == "grocery":
+            mark = "  (pantry, skipped)" if item.skip_reason else ""
+            print(f"  [{' ' if item.skip_reason else 'x'}] {item.amount_text:<16} {item.name}{mark}")
+    print_spice_list(items)
     return 0
+
+
+def print_spice_list(items: list[GroceryItem]) -> None:
+    spices = [i for i in items if i.category == "spice"]
+    if spices:
+        print("\nSpices & seasonings (check your spice rack; not added to the cart):")
+        for item in spices:
+            print(f"  [ ] {item.amount_text:<16} {item.name}")
 
 
 def cmd_pantry(store: Store, args) -> int:
@@ -157,7 +169,9 @@ def cmd_cart(store: Store, args) -> int:
     recipes = _load(store, args.ids)
     if recipes is None:
         return 1
-    items = [i for i in build_grocery_list(recipes, store.pantry()) if not i.skip_reason]
+    all_items = build_grocery_list(recipes, store.pantry())
+    items = [i for i in all_items if i.category == "grocery" and not i.skip_reason]
+    print_spice_list(all_items)
     print(f"{len(items)} items to add. A browser window will open. Nothing will be purchased.")
 
     plan: list[tuple[GroceryItem, Product, int]] = []

@@ -54,8 +54,10 @@ rtc pantry add "olive oil" "garlic powder"   # things you already have; skipped 
 rtc cart 1 2             # fill your Walmart cart for recipes 1 and 2
 ```
 
-Salt and black pepper are never put on a grocery list. Other peppers (bell, jalapeño, cayenne,
-red pepper flakes) are.
+Salt and black pepper are left off every list. Spice-rack items (ground cumin, paprika, dried
+oregano, red pepper flakes, Italian seasoning...) go on a separate **Spices & seasonings** list to
+check against your rack and are never added to the cart. Store-bought packets and mixes (taco
+seasoning packet, gravy mix, onion soup mix) and fresh herbs are regular groceries.
 
 ### What `rtc cart` does
 

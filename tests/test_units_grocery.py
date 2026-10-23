@@ -62,3 +62,40 @@ def test_salt_and_black_pepper_never_listed_but_other_peppers_are():
         assert not is_always_excluded(name), name
     r = _recipe("Soup", ("Salt", None, ""), ("Pepper", None, ""), ("Green Bell Peppers", 2, ""))
     assert [i.name for i in build_grocery_list([r])] == ["Green Bell Peppers"]
+
+
+def _cat(raw):
+    from recipe_to_cart.ingredients import parse_line
+    from recipe_to_cart.spices import is_spice
+    ing = parse_line(raw)[0]
+    return "spice" if is_spice(ing.name, ing.unit, ing.raw) else "grocery"
+
+
+def test_spice_rack_vs_groceries():
+    spices = [
+        "1 tsp ground cumin", "2 tsp chili powder", "1/2 tsp smoked paprika", "1 tsp garlic powder",
+        "1 tsp dried oregano", "1 tsp oregano", "2 bay leaves", "1/4 tsp red pepper flakes",
+        "1/4 tsp cayenne pepper", "1 tbsp Italian seasoning", "2 tbsp taco seasoning",
+        "1/2 tsp ground cinnamon", "pinch of nutmeg", "1 tsp dried thyme",
+    ]
+    groceries = [
+        "1 packet taco seasoning", "1 (1 oz) envelope taco seasoning", "1 packet brown gravy mix",
+        "1 envelope onion soup mix", "4 tbsp. Minced Fresh Oregano", "1/4 cup chopped cilantro",
+        "3 cloves garlic, minced", "1 tbsp grated fresh ginger", "2 sprigs fresh thyme",
+        "2 whole Green Bell Peppers, Diced", "2 whole Fresh Jalapenos", "1 cup fresh basil leaves",
+        "2 lbs beef chuck",
+    ]
+    for raw in spices:
+        assert _cat(raw) == "spice", raw
+    for raw in groceries:
+        assert _cat(raw) == "grocery", raw
+
+
+def test_spices_kept_off_cart_list():
+    r = Recipe(title="Chili", instructions=[], ingredients=[
+        Ingredient(raw="2 tsp chili powder", name="chili powder", quantity=2, unit="teaspoon"),
+        Ingredient(raw="1 packet chili seasoning mix", name="chili seasoning mix", quantity=1, unit="packet"),
+        Ingredient(raw="1 lb ground beef", name="ground beef", quantity=1, unit="pound"),
+    ])
+    cats = {i.name: i.category for i in build_grocery_list([r])}
+    assert cats == {"chili powder": "spice", "chili seasoning mix": "grocery", "ground beef": "grocery"}

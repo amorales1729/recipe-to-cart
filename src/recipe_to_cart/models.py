@@ -33,6 +33,7 @@ class GroceryItem:
     unit: str
     sources: list[str] = field(default_factory=list)
     skip_reason: str = ""
+    category: str = "grocery"  # "grocery" goes to the cart; "spice" is the spice-rack list
 
     @property
     def amount_text(self) -> str:

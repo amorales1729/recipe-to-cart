@@ -4,12 +4,13 @@ from __future__ import annotations
 import re
 
 from .models import GroceryItem, Recipe
+from .spices import is_spice
 from .units import to_quantity
 
 DEFAULT_PANTRY = ["water", "ice"]
 
-# Plain salt and black pepper never go on a grocery list. Other peppers (bell, jalapeno,
-# cayenne, red pepper flakes) are real groceries and are kept.
+# Plain salt and black pepper are left off every list. Fresh peppers (bell, jalapeno, poblano)
+# are groceries; dried ones (cayenne, red pepper flakes) go on the spice list.
 _ALWAYS_EXCLUDED = re.compile(
     r"^(?:(?:kosher|sea|table|fine|coarse|flaky|iodized)\s+)?salt$"
     r"|^(?:(?:fresh|freshly)\s+)?(?:(?:ground|cracked)\s+)?(?:black\s+)?pepper$"
@@ -58,6 +59,7 @@ def build_grocery_list(recipes: list[Recipe], pantry: list[str] | None = None) -
                         unit=ing.unit,
                         sources=[recipe.title],
                         skip_reason="pantry" if key in pantry_keys else "",
+                        category="spice" if is_spice(ing.name, ing.unit, ing.raw) else "grocery",
                     )
                 )
                 continue
