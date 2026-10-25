@@ -1,0 +1,10 @@
+{
+  "name": "recipe-to-cart",
+  "private": true,
+  "type": "module",
+  "description": "Chrome extension that turns recipes into a Walmart cart. Never checks out.",
+  "scripts": {
+    "test": "node --test tests/js/*.test.js",
+    "test:browser": "node --test tests/browser/*.test.js"
+  }
+}

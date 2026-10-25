@@ -1,11 +1,14 @@
+import { buildPlan, productOptions } from "./lib/plan.js";
+import * as storage from "./lib/storage.js";
+import { parseSearchPage, searchUrl } from "./lib/walmart.js";
 import { addToCartInPage, isBlockedUrl, readPageHtml } from "./walmart_page.js";
 
-const API = "http://127.0.0.1:8765";
 const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const money = (n) => (typeof n === "number" ? `$${n.toFixed(2)}` : "");
 
 let plan = null;
+let usual = {}; // last time's product per ingredient
 let adding = false;
 let workerTabId = null;
 const rows = new Map(); // key -> { item, options, el }
@@ -14,16 +17,6 @@ function setStatus(html, cls = "") {
   $("status").hidden = !html;
   $("status").className = `card ${cls}`;
   $("status").innerHTML = html;
-}
-
-async function api(path, body) {
-  const res = await fetch(API + path, body === undefined ? {} : {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`${path}: ${res.status}`);
-  return res.json();
 }
 
 // ---- the background Walmart tab the extension works in ----
@@ -81,7 +74,8 @@ function render() {
       <td><input type="checkbox" checked aria-label="Include ${item.name}"></td>
       <td>${escapeHtml(item.amount)} ${escapeHtml(item.name)}
         <div class="muted small">Searched: <span class="query">${escapeHtml(item.query)}</span>
-          · <button class="link change">change</button></div></td>
+          · <button class="link change">change</button>
+          · <button class="link have">I always have this</button></div></td>
       <td class="product"><span class="muted">Finding…</span></td>
       <td><input type="number" min="1" value="1"></td>
       <td class="price"></td>
@@ -89,12 +83,14 @@ function render() {
     tbody.appendChild(tr);
     rows.set(item.key, { item, options: [], el: tr });
     tr.querySelector(".change").addEventListener("click", () => changeSearch(rows.get(item.key)));
+    tr.querySelector(".have").addEventListener("click", () => alwaysHave(rows.get(item.key)));
     tr.querySelector("input[type=checkbox]").addEventListener("change", (e) => {
       tr.classList.toggle("skipped", !e.target.checked);
       updateTotal();
     });
   }
   $("list").hidden = false;
+  showPantryLine();
   if (plan.spices.length) {
     $("spice-list").innerHTML = plan.spices.map((s) => `<li>${escapeHtml(s.amount)} ${escapeHtml(s.name)}</li>`).join("");
     $("spices").hidden = false;
@@ -105,7 +101,7 @@ function showOptions(row) {
   const cell = row.el.querySelector(".product");
   const qty = row.el.querySelector("input[type=number]");
   if (!row.options.length) {
-    cell.innerHTML = `<span class="bad">Nothing found.</span> <a href="${row.item.search_url}" target="_blank">Search Walmart</a>`;
+    cell.innerHTML = `<span class="bad">Nothing found.</span> <a href="${row.item.searchUrl}" target="_blank">Search Walmart</a>`;
     row.el.querySelector("input[type=checkbox]").checked = false;
     row.el.classList.add("skipped");
     return;
@@ -114,7 +110,8 @@ function showOptions(row) {
   row.options.forEach((o, i) => {
     const opt = document.createElement("option");
     opt.value = i;
-    opt.textContent = `${o.name}${o.available === false ? " (out of stock)" : ""}`;
+    const notes = [money(o.price), o.cheapest && "cheapest", o.usual && "your usual", o.available === false && "out of stock"];
+    opt.textContent = [o.name, ...notes.filter(Boolean)].join(" · ");
     select.appendChild(opt);
   });
   const apply = () => {
@@ -127,12 +124,6 @@ function showOptions(row) {
   qty.addEventListener("input", updateTotal);
   cell.innerHTML = "";
   cell.appendChild(select);
-  if (row.saved) {
-    const tag = document.createElement("div");
-    tag.className = "muted small";
-    tag.textContent = "Your usual pick";
-    cell.appendChild(tag);
-  }
   apply();
 }
 
@@ -153,17 +144,9 @@ function updateTotal() {
   $("add").disabled = count === 0;
 }
 
+// Every item is searched each time so prices are current and the cheapest one is picked.
 async function findProducts() {
-  const todo = [];
-  for (const row of rows.values()) {
-    if (row.item.saved) {
-      row.saved = true;
-      row.options = [row.item.saved];
-      showOptions(row);
-    } else {
-      todo.push(row);
-    }
-  }
+  const todo = [...rows.values()];
   for (const [i, row] of todo.entries()) {
     setStatus(`Finding products on Walmart… ${i + 1} of ${todo.length}`);
     await searchRow(row);
@@ -172,10 +155,12 @@ async function findProducts() {
   setStatus("");
 }
 
-// Search Walmart for one row. A query you typed is sent along so the app remembers it.
+// Search Walmart for one row. A query you typed is remembered for that ingredient.
 async function searchRow(row, typedQuery = null) {
   const query = typedQuery || row.item.query;
-  const url = `https://www.walmart.com/search?q=${encodeURIComponent(query)}`;
+  const url = searchUrl(query);
+  row.item.query = query; // products are ranked against what was searched
+  row.item.searchUrl = url;
   row.el.querySelector(".product").innerHTML = `<span class="muted">Finding…</span>`;
   row.el.querySelector(".state").textContent = "";
   try {
@@ -186,18 +171,31 @@ async function searchRow(row, typedQuery = null) {
       await openInWorker(url);
       page = await runInWorker(readPageHtml);
     }
-    const body = { key: row.item.key, html: page.html };
-    if (typedQuery) body.query = typedQuery;
-    row.options = (await api("/pick", body)).options;
+    if (typedQuery) await storage.saveSearchTerm(row.item.key, typedQuery);
+    row.options = productOptions(row.item, parseSearchPage(page.html), usual[row.item.key]);
   } catch (e) {
     row.options = [];
     row.el.querySelector(".state").innerHTML = `<span class="bad">${escapeHtml(e.message)}</span>`;
   }
-  row.saved = false;
-  row.item.query = query;
-  row.item.search_url = url;
   row.el.querySelector(".query").textContent = query;
   showOptions(row);
+}
+
+// Add this to your pantry staples so it's left off every list from now on.
+async function alwaysHave(row) {
+  if (adding) return;
+  await storage.addToPantry(row.item.name);
+  rows.delete(row.item.key);
+  row.el.remove();
+  plan.pantrySkipped.push(row.item.name);
+  showPantryLine();
+  updateTotal();
+}
+
+function showPantryLine() {
+  $("pantry").hidden = !plan.pantrySkipped.length;
+  $("pantry").innerHTML = `Left off as pantry staples: ${plan.pantrySkipped.map(escapeHtml).join(", ")}.
+    <a href="app.html#pantry">Edit pantry</a>`;
 }
 
 async function changeSearch(row) {
@@ -215,7 +213,7 @@ async function changeSearch(row) {
 async function addAll() {
   adding = true;
   $("add").disabled = true;
-  const chosen = [];
+  const chosen = {};
   const included = [...rows.values()].filter((r) => selected(r) && r.el.querySelector("input[type=checkbox]").checked);
   let ok = 0;
   for (const [i, row] of included.entries()) {
@@ -239,16 +237,16 @@ async function addAll() {
     } catch (e) {
       state.innerHTML = `<span class="bad">${escapeHtml(e.message)}</span> <a href="${product.url}" target="_blank">Open</a>`;
     }
-    chosen.push({ key: row.item.key, id: product.id, name: product.name, url: product.url });
+    chosen[row.item.key] = { id: product.id, name: product.name, url: product.url };
     await sleep(1200 + Math.random() * 1500);
   }
-  try { await api("/choices", { choices: chosen }); await api("/done", {}); } catch { /* app already closed */ }
+  await storage.saveChoices(chosen);
   if (workerTabId !== null) {
     await chrome.tabs.update(workerTabId, { url: "https://www.walmart.com/cart", active: true });
   }
   setStatus(
     `<strong>Added ${ok} of ${included.length} items.</strong> Your Walmart cart is open in the next tab.
-     Review it and check out yourself whenever you're ready. Your picks are saved for next time.`,
+     Review it and check out yourself whenever you're ready.`,
     ok === included.length ? "ok" : "bad");
 }
 
@@ -257,21 +255,21 @@ function escapeHtml(s) {
 }
 
 async function main() {
-  setStatus("Loading your grocery list…");
-  try {
-    plan = await api("/plan");
-  } catch {
-    setStatus(
-      `<strong>The Recipe to Cart app isn't running.</strong><br>
-       In PowerShell, run <code>rtc cart 1</code> (with your recipe numbers), then
-       <button class="link" id="retry">try again</button>.`, "bad");
-    $("retry").addEventListener("click", () => location.reload());
+  const ids = (new URLSearchParams(location.search).get("recipes") || "").split(",").filter(Boolean);
+  const chosen = (await storage.recipes()).filter((r) => ids.includes(r.id));
+  if (!chosen.length) {
+    setStatus(`<strong>No recipes picked.</strong> Open a recipe page and click the Recipe to Cart button,
+      or pick some on <a href="app.html">your recipes</a>.`, "bad");
     return;
   }
+  plan = buildPlan(chosen, await storage.pantry(), await storage.searchTerms());
+  usual = await storage.choices();
   render();
   $("add").addEventListener("click", addAll);
   await findProducts();
   updateTotal();
+  // cart.html?recipes=...&auto=1 adds the picks without waiting for the review click.
+  if (new URLSearchParams(location.search).get("auto") === "1" && !$("add").disabled) await addAll();
 }
 
 main();
