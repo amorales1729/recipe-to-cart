@@ -2,6 +2,7 @@
 // Anywhere else: open your saved recipes.
 import { fromPage, readRecipePage } from "./lib/recipe.js";
 import { saveRecipe } from "./lib/storage.js";
+import { POLL_MINUTES, getWaiting, poll, updateBadge } from "./inbox.js";
 
 async function openPage(path) {
   // Reuse an open Recipe to Cart tab instead of piling up new ones.
@@ -36,5 +37,20 @@ async function shopForTab(tab) {
   }
 }
 
-chrome.action.onClicked.addListener(shopForTab);
+// With recipes waiting from your phone, the button opens them unless you're on a recipe page.
+async function onButton(tab) {
+  const onRecipeSite = /^https?:/.test(tab.url || "") && !/^https:\/\/([a-z0-9-]+\.)*walmart\.com\//.test(tab.url);
+  if (!onRecipeSite && (await getWaiting()).length) return openPage("phone.html");
+  return shopForTab(tab);
+}
+
+chrome.action.onClicked.addListener(onButton);
+
+// Recipes from your phone: check when Chrome starts, then every few minutes while it's open.
+chrome.alarms.get("phone-inbox").then((alarm) => {
+  if (!alarm) chrome.alarms.create("phone-inbox", { periodInMinutes: POLL_MINUTES, delayInMinutes: 0.1 });
+});
+chrome.alarms.onAlarm.addListener((alarm) => { if (alarm.name === "phone-inbox") poll(); });
+chrome.runtime.onStartup.addListener(() => { updateBadge(); poll(); });
 globalThis.shopForTab = shopForTab; // lets the browser test press the button
+globalThis.pollPhoneInbox = poll;

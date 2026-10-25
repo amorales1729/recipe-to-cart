@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Recipe to Cart: from your phone</title>
+  <link rel="stylesheet" href="cart.css">
+</head>
+<body>
+  <header>
+    <h1>Recipes from your phone</h1>
+    <p class="muted">Share a recipe from your iPhone with the <strong>Send to Recipe to Cart</strong> shortcut. It waits in your Google inbox until Chrome is open here, then shows up below. <a href="app.html">Your recipes</a></p>
+  </header>
+
+  <section id="status" class="card" hidden></section>
+
+  <section class="card">
+    <h2>Waiting</h2>
+    <p id="empty" class="muted">Nothing waiting.</p>
+    <ul id="waiting" class="recipes"></ul>
+    <div class="actions">
+      <button id="shop" class="primary" disabled>Shop for checked recipes</button>
+      <button id="check" class="link">Check now</button>
+      <span id="last-check" class="muted small"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Settings</h2>
+    <p class="muted small">From the Google Apps Script setup (see <code>docs/iphone-shortcut.md</code>).</p>
+    <label>Inbox web app URL<input id="inbox-url" type="text" placeholder="https://script.google.com/macros/s/.../exec"></label>
+    <label>Token<input id="token" type="text" placeholder="the token setup() printed"></label>
+    <p><strong>When a recipe arrives</strong></p>
+    <label><input type="radio" name="mode" value="review"> Show a badge and wait for me to review it (recommended)</label><br>
+    <label><input type="radio" name="mode" value="auto"> Fill my Walmart cart right away (still never checks out)</label>
+    <p class="muted small">Recipes arrive as links, so the extension needs permission to read recipe sites. Chrome asks once when you save.</p>
+    <div class="actions">
+      <button id="save" class="primary">Save</button>
+      <button id="test" class="link">Test connection</button>
+    </div>
+  </section>
+
+  <script type="module" src="phone.js"></script>
+</body>
+</html>
