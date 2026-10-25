@@ -41,6 +41,10 @@ CREATE TABLE IF NOT EXISTS product_choices (
     updated_at TEXT NOT NULL,
     PRIMARY KEY (store, ingredient_key)
 );
+CREATE TABLE IF NOT EXISTS search_terms (
+    ingredient_key TEXT PRIMARY KEY,
+    query TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS pantry (
     key TEXT PRIMARY KEY,
     name TEXT NOT NULL
@@ -167,6 +171,16 @@ class Store:
                 "INSERT OR REPLACE INTO product_choices VALUES (?, ?, ?, ?, ?, ?)",
                 (store, key, choice.product_id, choice.product_name, choice.product_url, _now()),
             )
+
+    # ---- your own store searches, set from the extension ----
+
+    def get_search_term(self, key: str) -> str | None:
+        row = self.conn.execute("SELECT query FROM search_terms WHERE ingredient_key = ?", (key,)).fetchone()
+        return row["query"] if row else None
+
+    def save_search_term(self, key: str, query: str) -> None:
+        with self.conn:
+            self.conn.execute("INSERT OR REPLACE INTO search_terms VALUES (?, ?)", (key, query.strip()))
 
     # ---- pantry ----
 

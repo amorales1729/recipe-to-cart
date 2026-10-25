@@ -74,7 +74,11 @@ seasoning packet, gravy mix, onion soup mix) and fresh herbs are regular groceri
 3. For each item it searches Walmart in a background tab, using your signed-in Chrome, and picks a
    product: your saved pick if you've chosen one before, otherwise store brand, plain and in stock.
    It also works out how many packages you need (8 cups of broth means two 32 oz cartons).
-4. Check the list. Change any product with its dropdown, fix a quantity, or untick an item.
+   Recipe wording is translated into store wording first ("cut up fryer chicken" is searched as
+   "whole chicken cut up", "jalapenos" as "jalapeno peppers"; see `search.py`).
+4. Check the list. Change any product with its dropdown, fix a quantity, or untick an item. If a
+   search found the wrong kind of thing, click **change** under the item and type a better search.
+   It's remembered for that ingredient from then on.
 5. Click **Add to Walmart cart**. It adds each item at a human pace, then opens your cart.
    Your picks are saved, so next time they come up automatically.
 
@@ -105,6 +109,7 @@ src/recipe_to_cart/
   extract.py      recipe from URL (schema.org data via recipe-scrapers) or pasted text
   ingredients.py  "2 lbs beef chuck, cubed" -> quantity / unit / name / prep
   grocery.py      merge recipes into one list, skip pantry items
+  search.py       recipe wording -> what to type in the store's search box
   units.py        unit conversion and package math
   db.py           SQLite storage
   stores/
