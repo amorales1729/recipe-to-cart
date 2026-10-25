@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .grocery import DEFAULT_PANTRY, ingredient_key
+from .grocery import PANTRY_SEEDS, ingredient_key
 from .models import Ingredient, Recipe
 
 SCHEMA = """
@@ -74,14 +74,17 @@ class Store:
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA foreign_keys = ON")
         self.conn.executescript(SCHEMA)
-        if self.conn.execute("SELECT COUNT(*) FROM pantry").fetchone()[0] == 0 and not self._pantry_initialized():
-            for name in DEFAULT_PANTRY:
-                self.conn.execute("INSERT OR IGNORE INTO pantry VALUES (?, ?)", (ingredient_key(name), name))
-            self.conn.execute("PRAGMA user_version = 1")
-            self.conn.commit()
+        self._seed_pantry()
 
-    def _pantry_initialized(self) -> bool:
-        return self.conn.execute("PRAGMA user_version").fetchone()[0] >= 1
+    def _seed_pantry(self) -> None:
+        """Add default pantry staples, each batch once, so items you remove stay removed."""
+        version = self.conn.execute("PRAGMA user_version").fetchone()[0]
+        for seed_version in sorted(PANTRY_SEEDS):
+            if seed_version > version:
+                for name in PANTRY_SEEDS[seed_version]:
+                    self.conn.execute("INSERT OR IGNORE INTO pantry VALUES (?, ?)", (ingredient_key(name), name))
+                self.conn.execute(f"PRAGMA user_version = {int(seed_version)}")
+        self.conn.commit()
 
     def close(self) -> None:
         self.conn.close()

@@ -100,3 +100,14 @@ def test_spices_kept_off_cart_list():
     ])
     cats = {i.name: i.category for i in build_grocery_list([r])}
     assert cats == {"chili powder": "spice", "chili seasoning mix": "grocery", "ground beef": "grocery"}
+
+
+def test_oils_left_off_as_pantry_staples(fixture_text):
+    from recipe_to_cart import extract
+
+    r = extract.from_html(fixture_text("italian_chicken_soup.html"), "u")
+    items = build_grocery_list([r])
+    to_buy = [i.name for i in items if not i.skip_reason]
+    assert "Olive Oil" not in to_buy and "Extra Virgin Olive Oil" not in to_buy
+    assert "Heavy Cream" in to_buy and "Green Bell Peppers" in to_buy
+    assert {i.name for i in items if i.skip_reason} == {"Olive Oil", "Extra Virgin Olive Oil"}
