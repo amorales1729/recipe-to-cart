@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Recipe to Cart",
+  "version": "0.1.0",
+  "description": "Fills your Walmart cart from your Recipe to Cart grocery list. Never checks out.",
+  "action": { "default_title": "Recipe to Cart: fill my Walmart cart" },
+  "background": { "service_worker": "background.js" },
+  "permissions": ["tabs", "scripting"],
+  "host_permissions": ["https://www.walmart.com/*", "http://127.0.0.1/*"]
+}

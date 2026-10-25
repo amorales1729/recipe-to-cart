@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path

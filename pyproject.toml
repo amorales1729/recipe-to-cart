@@ -11,11 +11,10 @@ dependencies = [
     "recipe-scrapers>=15.0",
     "ingredient-parser-nlp>=2.0",
     "pint>=0.24",
-    "playwright>=1.45",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "playwright>=1.45"]  # playwright only for the optional extension e2e test
 
 [project.scripts]
 rtc = "recipe_to_cart.cli:main"

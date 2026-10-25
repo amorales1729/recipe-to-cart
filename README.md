@@ -3,8 +3,8 @@
 Give it a recipe (a URL or pasted text). It saves the ingredients and instructions, builds a grocery
 list, picks Walmart products and package counts, and adds them to your Walmart cart.
 
-**It never buys anything.** The browser it drives refuses to open any checkout or payment page.
-You review the cart and check out yourself, if you want to.
+**It never buys anything.** The Chrome extension only adds to your cart and refuses to open any
+checkout or payment page. You review the cart and check out yourself, if you want to.
 
 **It costs nothing to run.** No paid APIs, no AI calls, no cloud server. Everything runs on your PC
 with free open-source libraries, and your data stays in one local file.
@@ -26,8 +26,14 @@ with free open-source libraries, and your data stays in one local file.
    If PowerShell says scripts are disabled, run
    `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, then activate again.
 
-3. That's it. The cart step uses your installed Google Chrome, so there is no browser to download.
-   (Prefer Edge? Add `--browser msedge`.)
+3. **Add the Chrome extension (once):**
+   1. In Chrome, go to `chrome://extensions`.
+   2. Turn on **Developer mode** (top right).
+   3. Click **Load unpacked** and choose the `extension` folder inside `recipe-to-cart`.
+   4. Click the puzzle-piece icon in the toolbar and pin **Recipe to Cart** so its button is always visible.
+
+   The extension runs in your normal Chrome, where you're already signed in to Walmart. There's
+   no separate login.
 
 The first time you add a recipe, the ingredient parser downloads a small language model file (about
 a few MB). That happens once.
@@ -61,19 +67,18 @@ seasoning packet, gravy mix, onion soup mix) and fresh herbs are regular groceri
 
 ### What `rtc cart` does
 
-1. Opens a Chrome window with its own profile. **The first time, sign in to Walmart in that window**
-   and set your store. It stays signed in after that. This code never sees or stores your password.
-2. For each grocery item it searches Walmart, picks a product (your saved pick if you've chosen one
-   before; otherwise store brand, plain, in stock), and works out how many packages you need
-   (8 cups of broth -> two 32 oz cartons).
-3. Shows you each pick. Press Enter to accept, `n` for the next option, `s` to skip, `r` to search
-   again, or type a number to set the quantity. Your choices are remembered for next time.
-4. Shows the full list and asks before adding anything.
-5. Adds everything at a human pace, then opens your cart for you to review.
+1. `rtc cart 1 2` builds the grocery list for those recipes, prints the spice-rack list, and waits.
+2. In Chrome, click the **Recipe to Cart** button in the toolbar. A page opens with every item.
+3. For each item it searches Walmart in a background tab, using your signed-in Chrome, and picks a
+   product: your saved pick if you've chosen one before, otherwise store brand, plain and in stock.
+   It also works out how many packages you need (8 cups of broth means two 32 oz cartons).
+4. Check the list. Change any product with its dropdown, fix a quantity, or untick an item.
+5. Click **Add to Walmart cart**. It adds each item at a human pace, then opens your cart.
+   Your picks are saved, so next time they come up automatically.
 
-If Walmart shows a "Robot or human?" check, solve it in the window and press Enter. If Walmart
-changes its page and a button can't be found, the tool asks you to do that one step by hand
-instead of guessing.
+If Walmart asks you to confirm you're human, the page tells you. Finish the check in the Walmart
+tab and click continue. If an item can't be added (out of stock, or Walmart changed its page),
+its row says so with a link to add it yourself.
 
 ## Where your data lives
 
@@ -81,14 +86,15 @@ instead of guessing.
 
 - `recipes.db`: a SQLite database (a single file) with your recipes, product picks, and pantry.
   Copy it to back up.
-- `browser-profile\`: the Chrome profile used for Walmart, so you stay signed in.
+### Why an extension?
 
-### Why a separate Chrome profile?
+Chrome doesn't let outside programs control your everyday, signed-in browser (a security rule
+since Chrome 136). Walmart also stalls logins in automated browser windows. An extension is the
+one thing Chrome allows to work inside your normal browser, so it uses your existing Walmart
+sign-in and browses like you do.
 
-Chrome doesn't let automation tools control your everyday profile (a security rule since Chrome
-136, which protects your saved passwords and cookies from malware). So the cart window uses its own
-profile. You sign in to Walmart there once, and it stays signed in. It doesn't need your Gmail.
-You can keep your normal Chrome open while it runs.
+While `rtc cart` is running, the app listens on `127.0.0.1:8765`. That address is only reachable
+from your own PC, and requests from websites are refused.
 
 ## Project layout
 
@@ -101,8 +107,10 @@ src/recipe_to_cart/
   db.py           SQLite storage
   stores/
     base.py       product picking rules and the checkout blocker
-    walmart.py    Walmart search parsing and the cart-filling browser script
+    walmart.py    Walmart search-page parsing
+  server.py       local helper the Chrome extension talks to during `rtc cart`
   cli.py          the `rtc` command
+extension/        the Chrome extension (Manifest V3): review page, Walmart search, add to cart
 tests/            pytest suite (no network needed)
 ```
 
@@ -113,10 +121,13 @@ pip install -e ".[dev]"
 pytest
 ```
 
+`tests/test_extension_e2e.py` loads the extension into Chromium against a fake walmart.com. It's
+skipped unless you set `RTC_E2E_CHROMIUM` to a Chromium executable path.
+
 ## Notes and limits
 
 - Automating a store's website is for your personal use only. Store terms generally don't allow
   bots, so keep it slow and don't share it as a service.
 - Walmart changes its site from time to time. Search results are read from the data Walmart embeds
   in the page, which is fairly stable. The Add to cart and + buttons are found by their labels,
-  and if that breaks, the tool falls back to asking you.
+  and if that breaks, the row says so and links to the product so you can add it yourself.
