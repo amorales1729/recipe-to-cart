@@ -6,12 +6,10 @@ import sys
 from pathlib import Path
 
 from . import extract
-from .db import ProductChoice, Store, app_home
+from .db import Store
 from .display import format_amount
 from .grocery import build_grocery_list
 from .models import GroceryItem, Recipe
-from .stores.base import Product, pick_product
-from .units import packages_needed
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -36,10 +34,9 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("groceries", help="merged grocery list for one or more recipes")
     p.add_argument("ids", type=int, nargs="+")
 
-    p = sub.add_parser("cart", help="add the grocery list to your Walmart cart (never checks out)")
+    p = sub.add_parser("cart", help="get the grocery list ready for the Chrome extension (never checks out)")
     p.add_argument("ids", type=int, nargs="+")
-    p.add_argument("--browser", default="chrome", choices=["chrome", "msedge", "chromium"])
-    p.add_argument("--yes", action="store_true", help="accept saved/top product picks without asking")
+    p.add_argument("--port", type=int, help="local port for the extension (default 8765)")
 
     p = sub.add_parser("pantry", help="items you already have, skipped when building a cart")
     p.add_argument("action", choices=["list", "add", "remove"])
@@ -165,88 +162,30 @@ def cmd_pantry(store: Store, args) -> int:
 
 
 def cmd_cart(store: Store, args) -> int:
-    from .stores.walmart import WalmartCart
+    from .server import DEFAULT_PORT, CartSession, serve
 
     recipes = _load(store, args.ids)
     if recipes is None:
         return 1
     all_items = build_grocery_list(recipes, store.pantry())
     items = [i for i in all_items if i.category == "grocery" and not i.skip_reason]
+    spices = [i for i in all_items if i.category == "spice"]
     print_spice_list(all_items)
-    print(f"{len(items)} items to add. A browser window will open. Nothing will be purchased.")
+    if not items:
+        print("Nothing to add to the cart.")
+        return 0
 
-    plan: list[tuple[GroceryItem, Product, int]] = []
-    profile = "browser-profile" if args.browser == "chrome" else f"browser-profile-{args.browser}"
-    with WalmartCart(app_home() / profile, browser=args.browser) as cart:
-        cart.ensure_logged_in()
-
-        # 1) Review: choose a product and package count for every item before touching the cart.
-        for item in items:
-            chosen = choose_product(store, cart, item, auto=args.yes)
-            if chosen:
-                plan.append(chosen)
-
-        if not plan:
-            print("Nothing to add.")
-            return 0
-        print("\nAbout to add to your Walmart cart:")
-        for item, product, qty in plan:
-            price = f"${product.price:.2f}" if product.price else ""
-            print(f"  {qty} x {product.name} {price}   <- {item.amount_text} {item.name}")
-        if not args.yes and input("\nAdd these to the cart? [Y/n] ").strip().lower() not in ("", "y", "yes"):
-            print("Cancelled. Nothing was added.")
-            return 0
-
-        # 2) Fill the cart.
-        for item, product, qty in plan:
-            print(f"Adding {qty} x {product.name} ...")
-            cart.add_to_cart(product, qty)
-        cart.open_cart()
-        input("\nDone. Your cart is open in the browser. Review it and check out yourself if you want. "
-              "Press Enter to close the browser... ")
+    session = CartSession(store, [r.title for r in recipes], items, spices)
+    print(f"\n{len(items)} items ready for Walmart.")
+    print("In Chrome, click the Recipe to Cart button in the toolbar to review and add them.")
+    print("Nothing is ever purchased. Press Ctrl+C here to cancel.")
+    try:
+        serve(session, args.port or DEFAULT_PORT)
+    except OSError as e:
+        print(f"Couldn't start (is another `rtc cart` already running?): {e}", file=sys.stderr)
+        return 1
+    print("Done. Your picks were saved for next time." if session.done else "Stopped.")
     return 0
-
-
-def choose_product(store: Store, cart, item: GroceryItem, auto: bool) -> tuple[GroceryItem, Product, int] | None:
-    saved = store.get_choice(cart.name, item.key)
-    if saved:
-        product = Product(id=saved.product_id, name=saved.product_name, url=saved.product_url)
-        candidates = [product]
-    else:
-        candidates = pick_product(cart.search(item.name), item.name, cart.store_brands)
-        if not candidates:
-            print(f"\n{item.name}: no results found, skipping.")
-            return None
-
-    idx = 0
-    while True:
-        product = candidates[idx]
-        qty = packages_needed(item.quantity, item.unit, product.name, item.name)
-        if auto:
-            break
-        price = f"${product.price:.2f}" if product.price else ""
-        tag = " (saved pick)" if saved and idx == 0 else ""
-        print(f"\n{item.amount_text} {item.name}")
-        print(f"  -> {qty} x {product.name} {price}{tag}")
-        answer = input("  [Enter]=ok  n=next option  s=skip  r=re-search  <number>=quantity: ").strip().lower()
-        if answer == "":
-            break
-        if answer == "s":
-            return None
-        if answer == "n":
-            idx = (idx + 1) % len(candidates)
-            continue
-        if answer == "r":
-            saved = None
-            candidates = pick_product(cart.search(item.name), item.name, cart.store_brands) or candidates
-            idx = 0
-            continue
-        if answer.isdigit() and int(answer) > 0:
-            qty = int(answer)
-            break
-
-    store.save_choice(cart.name, item.key, ProductChoice(product.id, product.name, product.url))
-    return item, product, qty
 
 
 COMMANDS = {

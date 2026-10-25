@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Recipe to Cart</title>
+  <link rel="stylesheet" href="cart.css">
+</head>
+<body>
+  <header>
+    <h1>Recipe to Cart</h1>
+    <p id="recipes" class="muted"></p>
+  </header>
+
+  <section id="status" class="card"></section>
+
+  <section id="list" class="card" hidden>
+    <table>
+      <thead>
+        <tr><th></th><th>Need</th><th>Walmart product</th><th>Qty</th><th>Price</th><th>Status</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="actions">
+      <button id="add" class="primary" disabled>Add to Walmart cart</button>
+      <span id="total" class="muted"></span>
+    </div>
+    <p class="muted small">Nothing is ever purchased. This only adds to your cart; you check out yourself.</p>
+  </section>
+
+  <section id="spices" class="card" hidden>
+    <h2>Spices &amp; seasonings</h2>
+    <p class="muted small">Check your spice rack. These aren't added to the cart.</p>
+    <ul id="spice-list"></ul>
+  </section>
+
+  <script type="module" src="cart.js"></script>
+</body>
+</html>
