@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Recipe to Cart: recipes</title>
+  <link rel="stylesheet" href="cart.css">
+</head>
+<body>
+  <header>
+    <h1>Recipe to Cart</h1>
+    <p class="muted">On any recipe page, click the Recipe to Cart button in Chrome's toolbar. It saves the recipe and starts your Walmart cart.</p>
+  </header>
+
+  <section id="status" class="card" hidden></section>
+
+  <section class="card">
+    <h2>Your recipes</h2>
+    <p id="empty" class="muted" hidden>No recipes yet.</p>
+    <ul id="recipe-list" class="recipes"></ul>
+    <div class="actions">
+      <button id="shop" class="primary" disabled>Shop for checked recipes</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Paste a recipe</h2>
+    <p class="muted small">From Apple Notes, a text, or a site the button can't read. Put the ingredients under a line that says "Ingredients".</p>
+    <input id="paste-title" type="text" placeholder="Title (optional)">
+    <textarea id="paste-text" rows="8" placeholder="Ingredients&#10;2 cups heavy cream&#10;1 onion, diced&#10;&#10;Instructions&#10;1. ..."></textarea>
+    <div class="actions"><button id="paste-save" class="primary">Save recipe</button></div>
+  </section>
+
+  <section class="card" id="pantry">
+    <h2>Pantry staples</h2>
+    <p class="muted small">Always left off the shopping list. Salt and black pepper are never listed.</p>
+    <ul id="pantry-list" class="chips"></ul>
+    <form id="pantry-form" class="actions">
+      <input id="pantry-add" type="text" placeholder="Add a staple, like butter">
+      <button class="primary" type="submit">Add</button>
+    </form>
+  </section>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
