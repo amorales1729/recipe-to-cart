@@ -3,8 +3,27 @@
   "name": "Recipe to Cart",
   "version": "0.2.0",
   "description": "Turns a recipe page into a Walmart cart: reads the ingredients, skips pantry staples, picks the cheapest match. Never checks out.",
-  "action": { "default_title": "Recipe to Cart: shop for this recipe" },
-  "background": { "service_worker": "background.js", "type": "module" },
-  "permissions": ["activeTab", "scripting", "storage", "tabs"],
-  "host_permissions": ["https://www.walmart.com/*"]
+  "action": {
+    "default_title": "Recipe to Cart: shop for this recipe"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "activeTab",
+    "alarms",
+    "scripting",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://www.walmart.com/*",
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*"
+  ],
+  "optional_host_permissions": [
+    "<all_urls>"
+  ],
+  "options_page": "phone.html"
 }

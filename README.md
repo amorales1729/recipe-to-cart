@@ -43,6 +43,14 @@ To shop for several recipes at once, click **Add more recipes** (or the button o
 page) to open your saved recipes, tick the ones you want, and click **Shop for checked recipes**.
 Recipes from Apple Notes or a text can be pasted there too.
 
+## Send recipes from your iPhone
+
+Share a recipe link from your iPhone with a **Send to Recipe to Cart** shortcut. It waits in a free
+inbox in your own Google account (a Google Sheet with a small Apps Script) until Chrome is open on
+your PC. The extension checks when Chrome starts and every 5 minutes, then either shows a number on
+its button for you to review (the default) or fills your Walmart cart right away, if you choose.
+Still free, still never checks out. One-time setup: [docs/iphone-shortcut.md](docs/iphone-shortcut.md).
+
 ## What goes on the list
 
 - **Salt and black pepper** are never listed. Fresh peppers (bell, jalapeno) are groceries.
@@ -71,6 +79,8 @@ runner, no packages to install:
 npm test                              # unit tests (Node 20+)
 RTC_E2E=1 npm run test:browser        # full extension run in Chromium (needs Playwright)
 ```
+
+`apps-script/Code.gs` is the iPhone inbox; its tests run it against a fake Google Sheet.
 
 The browser test loads the extension against fake recipe and Walmart sites and checks that the
 cheapest match is picked, quantities are right, the cart is opened, and checkout is never touched.
