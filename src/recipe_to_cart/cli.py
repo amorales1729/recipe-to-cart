@@ -134,9 +134,11 @@ def cmd_groceries(store: Store, args) -> int:
     items = build_grocery_list(recipes, store.pantry())
     print("Grocery list (goes to the cart):")
     for item in items:
-        if item.category == "grocery":
-            mark = "  (pantry, skipped)" if item.skip_reason else ""
-            print(f"  [{' ' if item.skip_reason else 'x'}] {item.amount_text:<16} {item.name}{mark}")
+        if item.category == "grocery" and not item.skip_reason:
+            print(f"  [ ] {item.amount_text:<16} {item.name}")
+    staples = sorted({i.name for i in items if i.skip_reason})
+    if staples:
+        print(f"\nLeft off as pantry staples: {', '.join(staples)}  (change with `rtc pantry`)")
     print_spice_list(items)
     return 0
 

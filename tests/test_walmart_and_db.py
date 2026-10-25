@@ -55,3 +55,23 @@ def test_store_roundtrip(tmp_path):
     s2 = Store(tmp_path / "t.db")  # removing a default pantry item sticks after reopening
     assert "water" not in s2.pantry()
     assert s2.delete_recipe(rid) and s2.get_recipe(rid) is None
+
+
+def test_existing_database_gets_new_pantry_staples_once(tmp_path):
+    import sqlite3
+
+    path = tmp_path / "old.db"
+    s = Store(path)
+    s.close()
+    # Pretend this database predates the oil staples.
+    conn = sqlite3.connect(path)
+    conn.execute("DELETE FROM pantry WHERE key != 'water' AND key != 'ice'")
+    conn.execute("PRAGMA user_version = 1")
+    conn.commit()
+    conn.close()
+
+    s = Store(path)
+    assert "olive oil" in s.pantry() and "vegetable oil" in s.pantry()
+    s.remove_pantry("olive oil")
+    s.close()
+    assert "olive oil" not in Store(path).pantry()  # stays removed

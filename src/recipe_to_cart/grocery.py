@@ -7,7 +7,16 @@ from .models import GroceryItem, Recipe
 from .spices import is_spice
 from .units import to_quantity
 
-DEFAULT_PANTRY = ["water", "ice"]
+# Staples assumed to be in the kitchen. They're left off the shopping list; edit with `rtc pantry`.
+# Keyed by the database version that introduced them, so existing databases pick up new ones once.
+PANTRY_SEEDS = {
+    1: ["water", "ice"],
+    2: [
+        "oil", "cooking oil", "olive oil", "extra virgin olive oil", "light olive oil",
+        "vegetable oil", "canola oil", "cooking spray", "nonstick cooking spray", "nonstick spray",
+    ],
+}
+DEFAULT_PANTRY = [name for names in PANTRY_SEEDS.values() for name in names]
 
 # Plain salt and black pepper are left off every list. Fresh peppers (bell, jalapeno, poblano)
 # are groceries; dried ones (cayenne, red pepper flakes) go on the spice list.
