@@ -268,6 +268,8 @@ async function main() {
   $("add").addEventListener("click", addAll);
   await findProducts();
   updateTotal();
+  // cart.html?recipes=...&auto=1 adds the picks without waiting for the review click.
+  if (new URLSearchParams(location.search).get("auto") === "1" && !$("add").disabled) await addAll();
 }
 
 main();

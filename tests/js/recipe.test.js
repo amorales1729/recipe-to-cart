@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { parseLine, parseLines } from "../../extension/lib/ingredients.js";
-import { RecipeError, fromPage, fromText } from "../../extension/lib/recipe.js";
+import { RecipeError, fromHtml, fromPage, fromText } from "../../extension/lib/recipe.js";
 import { fixture, pageFromHtml } from "./helpers.js";
 
 const one = (line) => {
@@ -21,6 +21,14 @@ test("reads the recipe from a page's schema.org data", () => {
   assert.ok(names.includes("Salt") && names.includes("Freshly Ground Pepper")); // split in two
   assert.ok(names.includes("Whole Tomatoes")); // "whole" kept when there's a unit
   assert.deepEqual(one("2 c. Heavy Cream"), ["Heavy Cream", 2, "cup"]);
+});
+
+test("reads a recipe from fetched HTML", () => {
+  const r = fromHtml(fixture("italian_chicken_soup.html"), "https://example.com/soup");
+  assert.equal(r.title, "Italian Chicken Soup");
+  assert.equal(r.url, "https://example.com/soup");
+  assert.equal(r.lines.length, 14);
+  assert.throws(() => fromHtml("<html><title>Nope</title></html>"), RecipeError);
 });
 
 test("falls back to text you selected on the page", () => {

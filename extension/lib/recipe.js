@@ -104,6 +104,13 @@ export function fromPage(page) {
   );
 }
 
+/** A recipe from a page's HTML fetched without opening it (for example a URL saved from a phone). */
+export function fromHtml(html, url = "") {
+  const jsonld = [...String(html).matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
+  const title = (String(html).match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || "";
+  return fromPage({ url, title: text(title), jsonld, selection: "" });
+}
+
 // ---- pasted text (Apple Notes, copied web pages) ----
 
 const ING_HEADER = /^\s*ingredients?\s*:?\s*$/i;
