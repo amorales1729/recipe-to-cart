@@ -114,7 +114,8 @@ function showOptions(row) {
   row.options.forEach((o, i) => {
     const opt = document.createElement("option");
     opt.value = i;
-    opt.textContent = `${o.name}${o.available === false ? " (out of stock)" : ""}`;
+    const notes = [money(o.price), o.cheapest && "cheapest", o.usual && "your usual", o.available === false && "out of stock"];
+    opt.textContent = [o.name, ...notes.filter(Boolean)].join(" · ");
     select.appendChild(opt);
   });
   const apply = () => {
@@ -127,12 +128,6 @@ function showOptions(row) {
   qty.addEventListener("input", updateTotal);
   cell.innerHTML = "";
   cell.appendChild(select);
-  if (row.saved) {
-    const tag = document.createElement("div");
-    tag.className = "muted small";
-    tag.textContent = "Your usual pick";
-    cell.appendChild(tag);
-  }
   apply();
 }
 
@@ -153,17 +148,9 @@ function updateTotal() {
   $("add").disabled = count === 0;
 }
 
+// Every item is searched each time so prices are current and the cheapest one is picked.
 async function findProducts() {
-  const todo = [];
-  for (const row of rows.values()) {
-    if (row.item.saved) {
-      row.saved = true;
-      row.options = [row.item.saved];
-      showOptions(row);
-    } else {
-      todo.push(row);
-    }
-  }
+  const todo = [...rows.values()];
   for (const [i, row] of todo.entries()) {
     setStatus(`Finding products on Walmart… ${i + 1} of ${todo.length}`);
     await searchRow(row);
@@ -193,7 +180,6 @@ async function searchRow(row, typedQuery = null) {
     row.options = [];
     row.el.querySelector(".state").innerHTML = `<span class="bad">${escapeHtml(e.message)}</span>`;
   }
-  row.saved = false;
   row.item.query = query;
   row.item.search_url = url;
   row.el.querySelector(".query").textContent = query;
@@ -248,7 +234,7 @@ async function addAll() {
   }
   setStatus(
     `<strong>Added ${ok} of ${included.length} items.</strong> Your Walmart cart is open in the next tab.
-     Review it and check out yourself whenever you're ready. Your picks are saved for next time.`,
+     Review it and check out yourself whenever you're ready.`,
     ok === included.length ? "ok" : "bad");
 }
 

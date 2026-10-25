@@ -29,12 +29,17 @@ def test_plan_pick_and_save(tmp_path, fixture_text):
     options = session.pick("heavy cream", fixture_text("walmart_search.html"))["options"]
     best = options[0]
     assert best["id"] == "222" and best["qty"] == 1  # 2 cups fits one 32 fl oz carton
+    assert best["cheapest"] and not best["usual"]
+    assert not any(o["cheapest"] for o in options[1:])
 
     assert session.save_choices([{"key": "heavy cream", **best}]) == 1
     # Junk is ignored: unknown ingredient, non-Walmart URL.
     assert session.save_choices([{"key": "nope", **best}, {"key": "heavy cream", "id": "1", "url": "https://evil.example/"}]) == 0
     saved = session.plan()["items"][0]["saved"]
     assert saved["id"] == "222" and saved["qty"] == 1
+    # Next time it's searched, your usual product is labeled.
+    options = session.pick("heavy cream", fixture_text("walmart_search.html"))["options"]
+    assert options[0]["usual"] and options[0]["cheapest"]
 
 
 def _serve(session):

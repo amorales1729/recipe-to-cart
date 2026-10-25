@@ -34,6 +34,8 @@ def _search_page(q):
          "canonicalUrl": f"/ip/x/{pid}1", "price": 9.99},
         {"__typename": "Product", "usItemId": pid + "2", "name": f"Great Value {q}, 32 oz",
          "canonicalUrl": f"/ip/y/{pid}2", "price": 2.50},
+        {"__typename": "Product", "usItemId": pid + "3", "name": f"Clover Valley {q}, 16 oz",
+         "canonicalUrl": f"/ip/z/{pid}3", "price": 1.75},
     ]
     data = {"props": {"pageProps": {"initialData": {"searchResult": {"itemStacks": [{"items": items}]}}}}}
     return f'<html><body><script id="__NEXT_DATA__" type="application/json">{json.dumps(data)}</script></body></html>'
@@ -105,9 +107,12 @@ def test_extension_fills_cart(tmp_path):
             selects = page.locator("#rows select")
             assert _wait(lambda: selects.count() == 2 and page.inner_text("#status").strip() == "", 60, page)
             names = [selects.nth(i).locator("option:checked").inner_text() for i in range(2)]
-            assert all(n.startswith("Great Value") for n in names), names  # not the flavored snack
+            # Cheapest for the amount needed, never the flavored snack: one 16 oz box of pasta ($1.75),
+            # but two 32 oz broths ($5.00) beat four 16 oz ones ($7.00).
+            assert names[0].startswith("Clover Valley") and names[0].endswith("$1.75 · cheapest"), names
+            assert names[1].startswith("Great Value") and names[1].endswith("$2.50 · cheapest"), names
             qtys = [page.locator("#rows input[type=number]").nth(i).input_value() for i in range(2)]
-            assert qtys == ["1", "2"]  # 1 box pasta; 8 cups broth = two 32 oz cartons
+            assert qtys == ["1", "2"]
 
             # Change the first row's search; the new results replace the old ones.
             page.once("dialog", lambda d: d.accept("barilla ditalini"))

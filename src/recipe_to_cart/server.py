@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from .db import ProductChoice, Store
 from .models import GroceryItem
 from .search import search_query
-from .stores.base import Product, pick_product
+from .stores.base import Product, pick_cheapest
 from .stores.walmart import STORE_BRANDS, parse_search_html, search_url
 from .units import packages_needed
 
@@ -72,8 +72,19 @@ class CartSession:
             self.store.save_search_term(key, query)
         products = parse_search_html(search_html)
         # Rank against the words that were searched, so "whole chicken cut up" matches its products.
-        ranked = pick_product(products, self.query_for(item), STORE_BRANDS)[:MAX_OPTIONS]
-        return {"key": key, "options": [self._option(item, p) for p in ranked]}
+        # The cheapest good match for the amount needed comes first, so it's the default pick.
+        ranked, n_good = pick_cheapest(
+            products, self.query_for(item), STORE_BRANDS,
+            cost=lambda p: p.price * packages_needed(item.quantity, item.unit, p.name, item.name),
+        )
+        saved = self.store.get_choice(STORE_NAME, key)
+        options = []
+        for i, p in enumerate(ranked[:MAX_OPTIONS]):
+            o = self._option(item, p)
+            o["cheapest"] = i == 0 and n_good > 0
+            o["usual"] = bool(saved and saved.product_id == p.id)
+            options.append(o)
+        return {"key": key, "options": options}
 
     def save_choices(self, choices: list[dict]) -> int:
         saved = 0
