@@ -67,6 +67,7 @@ def test_extension_fills_cart(tmp_path):
         result["session"] = CartSession(store, [recipe.title], wanted, [])
         serve(result["session"])
         result["saved"] = [tuple(r) for r in store.conn.execute("SELECT ingredient_key, product_id FROM product_choices")]
+        result["terms"] = [tuple(r) for r in store.conn.execute("SELECT ingredient_key, query FROM search_terms")]
 
     server = threading.Thread(target=run_server, daemon=True)
     server.start()
@@ -108,6 +109,12 @@ def test_extension_fills_cart(tmp_path):
             qtys = [page.locator("#rows input[type=number]").nth(i).input_value() for i in range(2)]
             assert qtys == ["1", "2"]  # 1 box pasta; 8 cups broth = two 32 oz cartons
 
+            # Change the first row's search; the new results replace the old ones.
+            page.once("dialog", lambda d: d.accept("barilla ditalini"))
+            page.locator("#rows .change").first.click()
+            assert _wait(lambda: "barilla ditalini" in selects.first.locator("option:checked").inner_text().lower(), 30, page)
+            assert page.locator("#rows .query").first.inner_text() == "barilla ditalini"
+
             page.click("#add")
             assert _wait(lambda: "Added 2 of 2" in page.inner_text("#status"), 90, page)
             assert len(added) == 3  # pasta once, broth twice
@@ -119,3 +126,4 @@ def test_extension_fills_cart(tmp_path):
     server.join(5)
     assert result["session"].done
     assert len(result["saved"]) == 2
+    assert result["terms"] == [("ditalini pasta", "barilla ditalini")]

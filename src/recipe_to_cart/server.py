@@ -16,6 +16,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from .db import ProductChoice, Store
 from .models import GroceryItem
+from .search import search_query
 from .stores.base import Product, pick_product
 from .stores.walmart import STORE_BRANDS, parse_search_html, search_url
 from .units import packages_needed
@@ -39,11 +40,13 @@ class CartSession:
         out = []
         for item in self.items.values():
             saved = self.store.get_choice(STORE_NAME, item.key)
+            query = self.query_for(item)
             entry = {
                 "key": item.key,
                 "name": item.name,
                 "amount": item.amount_text,
-                "search_url": search_url(item.name),
+                "query": query,
+                "search_url": search_url(query),
                 "saved": None,
             }
             if saved:
@@ -57,12 +60,19 @@ class CartSession:
             "spices": [{"name": s.name, "amount": s.amount_text} for s in self.spices],
         }
 
-    def pick(self, key: str, search_html: str) -> dict:
+    def query_for(self, item: GroceryItem) -> str:
+        return self.store.get_search_term(item.key) or search_query(item.name, item.unit)
+
+    def pick(self, key: str, search_html: str, query: str | None = None) -> dict:
+        """Rank the products on a Walmart search page. A query typed by you is remembered."""
         item = self.items.get(key)
         if item is None:
             raise KeyError(key)
+        if query and query.strip():
+            self.store.save_search_term(key, query)
         products = parse_search_html(search_html)
-        ranked = pick_product(products, item.name, STORE_BRANDS)[:MAX_OPTIONS]
+        # Rank against the words that were searched, so "whole chicken cut up" matches its products.
+        ranked = pick_product(products, self.query_for(item), STORE_BRANDS)[:MAX_OPTIONS]
         return {"key": key, "options": [self._option(item, p) for p in ranked]}
 
     def save_choices(self, choices: list[dict]) -> int:
@@ -142,7 +152,7 @@ def make_handler(session: CartSession):
             try:
                 body = self._json()
                 if self.path == "/pick":
-                    self._send(200, session.pick(body["key"], body.get("html", "")))
+                    self._send(200, session.pick(body["key"], body.get("html", ""), body.get("query")))
                 elif self.path == "/choices":
                     self._send(200, {"saved": session.save_choices(body.get("choices", []))})
                 elif self.path == "/done":

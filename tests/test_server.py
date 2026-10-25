@@ -22,7 +22,8 @@ def test_plan_pick_and_save(tmp_path, fixture_text):
     plan = session.plan()
     assert plan["recipes"] == ["Soup"]
     assert plan["items"][0]["amount"] == "2 cups" and plan["items"][0]["saved"] is None
-    assert plan["items"][0]["search_url"] == "https://www.walmart.com/search?q=Heavy+Cream"
+    assert plan["items"][0]["query"] == "heavy whipping cream"  # Walmart's wording
+    assert plan["items"][0]["search_url"] == "https://www.walmart.com/search?q=heavy+whipping+cream"
     assert plan["spices"] == [{"name": "ground cumin", "amount": "1 tsp"}]
 
     options = session.pick("heavy cream", fixture_text("walmart_search.html"))["options"]
@@ -64,3 +65,11 @@ def test_web_pages_are_refused_extension_allowed(tmp_path):
         assert _get(base + "/nope")[0] == 404
     finally:
         httpd.shutdown()
+
+
+def test_typed_search_is_remembered(tmp_path, fixture_text):
+    store, session = _session(tmp_path)
+    session.pick("heavy cream", fixture_text("walmart_search.html"), query="great value heavy cream")
+    item = session.plan()["items"][0]
+    assert item["query"] == "great value heavy cream"
+    assert item["search_url"].endswith("q=great+value+heavy+cream")

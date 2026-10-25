@@ -6,6 +6,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const money = (n) => (typeof n === "number" ? `$${n.toFixed(2)}` : "");
 
 let plan = null;
+let adding = false;
 let workerTabId = null;
 const rows = new Map(); // key -> { item, options, el }
 
@@ -78,13 +79,16 @@ function render() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><input type="checkbox" checked aria-label="Include ${item.name}"></td>
-      <td>${escapeHtml(item.amount)} ${escapeHtml(item.name)}</td>
+      <td>${escapeHtml(item.amount)} ${escapeHtml(item.name)}
+        <div class="muted small">Searched: <span class="query">${escapeHtml(item.query)}</span>
+          · <button class="link change">change</button></div></td>
       <td class="product"><span class="muted">Finding…</span></td>
       <td><input type="number" min="1" value="1"></td>
       <td class="price"></td>
       <td class="state"></td>`;
     tbody.appendChild(tr);
     rows.set(item.key, { item, options: [], el: tr });
+    tr.querySelector(".change").addEventListener("click", () => changeSearch(rows.get(item.key)));
     tr.querySelector("input[type=checkbox]").addEventListener("change", (e) => {
       tr.classList.toggle("skipped", !e.target.checked);
       updateTotal();
@@ -162,28 +166,54 @@ async function findProducts() {
   }
   for (const [i, row] of todo.entries()) {
     setStatus(`Finding products on Walmart… ${i + 1} of ${todo.length}`);
-    try {
-      await openInWorker(row.item.search_url);
-      let page = await runInWorker(readPageHtml);
-      if (page.botCheck) {
-        await waitForHuman();
-        await openInWorker(row.item.search_url);
-        page = await runInWorker(readPageHtml);
-      }
-      row.options = (await api("/pick", { key: row.item.key, html: page.html })).options;
-    } catch (e) {
-      row.options = [];
-      row.el.querySelector(".state").innerHTML = `<span class="bad">${escapeHtml(e.message)}</span>`;
-    }
-    showOptions(row);
+    await searchRow(row);
     await sleep(800 + Math.random() * 1200);
   }
   setStatus("");
 }
 
+// Search Walmart for one row. A query you typed is sent along so the app remembers it.
+async function searchRow(row, typedQuery = null) {
+  const query = typedQuery || row.item.query;
+  const url = `https://www.walmart.com/search?q=${encodeURIComponent(query)}`;
+  row.el.querySelector(".product").innerHTML = `<span class="muted">Finding…</span>`;
+  row.el.querySelector(".state").textContent = "";
+  try {
+    await openInWorker(url);
+    let page = await runInWorker(readPageHtml);
+    if (page.botCheck) {
+      await waitForHuman();
+      await openInWorker(url);
+      page = await runInWorker(readPageHtml);
+    }
+    const body = { key: row.item.key, html: page.html };
+    if (typedQuery) body.query = typedQuery;
+    row.options = (await api("/pick", body)).options;
+  } catch (e) {
+    row.options = [];
+    row.el.querySelector(".state").innerHTML = `<span class="bad">${escapeHtml(e.message)}</span>`;
+  }
+  row.saved = false;
+  row.item.query = query;
+  row.item.search_url = url;
+  row.el.querySelector(".query").textContent = query;
+  showOptions(row);
+}
+
+async function changeSearch(row) {
+  if (adding) return;
+  const typed = prompt(`Search Walmart for "${row.item.name}" using:`, row.item.query);
+  if (!typed || !typed.trim() || typed.trim() === row.item.query) return;
+  setStatus(`Searching Walmart for "${escapeHtml(typed.trim())}"…`);
+  await searchRow(row, typed.trim());
+  setStatus("");
+  updateTotal();
+}
+
 // ---- adding to the cart ----
 
 async function addAll() {
+  adding = true;
   $("add").disabled = true;
   const chosen = [];
   const included = [...rows.values()].filter((r) => selected(r) && r.el.querySelector("input[type=checkbox]").checked);
