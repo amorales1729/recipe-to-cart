@@ -38,7 +38,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("cart", help="add the grocery list to your Walmart cart (never checks out)")
     p.add_argument("ids", type=int, nargs="+")
-    p.add_argument("--browser", default="msedge", choices=["msedge", "chrome", "chromium"])
+    p.add_argument("--browser", default="chrome", choices=["chrome", "msedge", "chromium"])
     p.add_argument("--yes", action="store_true", help="accept saved/top product picks without asking")
 
     p = sub.add_parser("pantry", help="items you already have, skipped when building a cart")
@@ -176,7 +176,8 @@ def cmd_cart(store: Store, args) -> int:
     print(f"{len(items)} items to add. A browser window will open. Nothing will be purchased.")
 
     plan: list[tuple[GroceryItem, Product, int]] = []
-    with WalmartCart(app_home() / "browser-profile", browser=args.browser) as cart:
+    profile = "browser-profile" if args.browser == "chrome" else f"browser-profile-{args.browser}"
+    with WalmartCart(app_home() / profile, browser=args.browser) as cart:
         cart.ensure_logged_in()
 
         # 1) Review: choose a product and package count for every item before touching the cart.
