@@ -111,7 +111,7 @@ class WalmartCart:
     def __init__(
         self,
         profile_dir: Path,
-        browser: str = "msedge",
+        browser: str = "chrome",
         wait_for_user: Callable[[str], None] = lambda msg: input(msg),
         headless: bool = False,
     ):

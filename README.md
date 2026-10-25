@@ -26,8 +26,8 @@ with free open-source libraries, and your data stays in one local file.
    If PowerShell says scripts are disabled, run
    `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, then activate again.
 
-3. That's it. The cart step uses Microsoft Edge, which Windows already has, so there is no browser
-   to download. (Prefer Chrome? Add `--browser chrome`.)
+3. That's it. The cart step uses your installed Google Chrome, so there is no browser to download.
+   (Prefer Edge? Add `--browser msedge`.)
 
 The first time you add a recipe, the ingredient parser downloads a small language model file (about
 a few MB). That happens once.
@@ -61,7 +61,7 @@ seasoning packet, gravy mix, onion soup mix) and fresh herbs are regular groceri
 
 ### What `rtc cart` does
 
-1. Opens an Edge window with its own profile. **The first time, sign in to Walmart in that window**
+1. Opens a Chrome window with its own profile. **The first time, sign in to Walmart in that window**
    and set your store. It stays signed in after that. This code never sees or stores your password.
 2. For each grocery item it searches Walmart, picks a product (your saved pick if you've chosen one
    before; otherwise store brand, plain, in stock), and works out how many packages you need
@@ -81,7 +81,14 @@ instead of guessing.
 
 - `recipes.db`: a SQLite database (a single file) with your recipes, product picks, and pantry.
   Copy it to back up.
-- `browser-profile\`: the Edge profile used for Walmart, so you stay signed in.
+- `browser-profile\`: the Chrome profile used for Walmart, so you stay signed in.
+
+### Why a separate Chrome profile?
+
+Chrome doesn't let automation tools control your everyday profile (a security rule since Chrome
+136, which protects your saved passwords and cookies from malware). So the cart window uses its own
+profile. You sign in to Walmart there once, and it stays signed in. It doesn't need your Gmail.
+You can keep your normal Chrome open while it runs.
 
 ## Project layout
 
