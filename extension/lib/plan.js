@@ -1,5 +1,6 @@
 // The shopping plan for a cart run: what to buy, what to search Walmart for, and which
 // product to pick. Pure functions, so the rules are tested without a browser.
+import { aisleFor } from "./aisles.js";
 import { amountText, buildGroceryList } from "./grocery.js";
 import { parseLines } from "./ingredients.js";
 import { pickCheapest } from "./rank.js";
@@ -26,12 +27,13 @@ export function buildPlan(recipes, pantry, searchTerms = {}, suggestedWords = {}
     const [query, querySource] = searchTerms[item.key] ? [searchTerms[item.key], "you"]
       : suggested ? [suggested, "suggested"]
       : [searchQuery(item.name, item.unit), "rules"];
-    // Left-off items keep a Walmart link, in case you're running low.
-    const leftOff = { name: item.name, amount: amountText(item), searchUrl: searchUrl(query) };
+    // Left-off items can still be added from the cart page, in case you're running low.
+    const leftOff = { key: item.key, name: item.name, quantity: item.quantity, unit: item.unit,
+      amount: amountText(item), query, searchUrl: searchUrl(query) };
     if (item.category === "spice") spices.push(leftOff);
     else if (item.skipReason) pantrySkipped.push(leftOff);
     else if (!searchTerms[item.key] && suggestedWords[item.key] === PANTRY_WORD) pantrySkipped.push(leftOff);
-    else items.push({ ...item, amount: amountText(item), query, querySource, searchUrl: searchUrl(query) });
+    else items.push({ ...item, aisle: aisleFor(item.name, item.unit), amount: amountText(item), query, querySource, searchUrl: searchUrl(query) });
   }
   return { recipes: recipes.map((r) => r.title), items, pantrySkipped, spices };
 }

@@ -9,7 +9,7 @@ export function searchUrl(query) {
   return `${BASE}/search?q=${encodeURIComponent(query).replace(/%20/g, "+")}`;
 }
 
-/** Products {id, name, url, price, available, sponsored} from a search page's HTML or its __NEXT_DATA__ JSON text. */
+/** Products {id, name, url, image, price, available, sponsored} from a search page's HTML or its __NEXT_DATA__ JSON text. */
 export function parseSearchPage(htmlOrJson) {
   let text = htmlOrJson || "";
   const m = text.match(NEXT_DATA);
@@ -32,6 +32,7 @@ export function parseSearchPage(htmlOrJson) {
       id,
       name,
       url: url.split("?")[0],
+      image: image(item),
       price: price(item),
       available: available(item),
       sponsored: Boolean(item.isSponsoredFlag),
@@ -62,6 +63,11 @@ function price(item) {
     }
   }
   return null;
+}
+
+function image(item) {
+  const url = (item.imageInfo && item.imageInfo.thumbnailUrl) || item.image || item.imageUrl || "";
+  return typeof url === "string" && /^https:\/\//.test(url) ? url : "";
 }
 
 function available(item) {

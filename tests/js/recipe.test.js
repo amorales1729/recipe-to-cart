@@ -101,3 +101,15 @@ Toss with the warm sauce and serve right away.`);
   assert.equal(r.instructions.length, 2);
   assert.throws(() => fromText(""), RecipeError);
 });
+
+test("keeps the recipe's photo from its schema.org data, or the page's share image", () => {
+  const ld = (image) => JSON.stringify({ "@type": "Recipe", name: "Soup", recipeIngredient: ["1 onion"], image });
+  const page = (image, ogImage = "") => ({ url: "https://x.example/soup", title: "Soup", ogImage, jsonld: [ld(image)], selection: "" });
+  assert.equal(fromPage(page("https://img.example/a.jpg")).image, "https://img.example/a.jpg");
+  assert.equal(fromPage(page(["https://img.example/b.jpg", "https://img.example/c.jpg"])).image, "https://img.example/b.jpg");
+  assert.equal(fromPage(page({ "@type": "ImageObject", url: "https://img.example/d.jpg" })).image, "https://img.example/d.jpg");
+  assert.equal(fromPage(page(undefined, "https://img.example/og.jpg")).image, "https://img.example/og.jpg");
+  assert.equal(fromPage(page("javascript:alert(1)")).image, "");
+  const html = `<meta property="og:image" content="https://img.example/e.jpg"><script type="application/ld+json">${ld()}</script>`;
+  assert.equal(fromHtml(html, "https://x.example/soup").image, "https://img.example/e.jpg");
+});

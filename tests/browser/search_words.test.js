@@ -83,10 +83,10 @@ test("cart page uses suggested searches and sends new ingredients for the next r
     });
     let cart = null;
     assert.ok(await until(() => (cart = ctx.pages().find((p) => p.url().includes("cart.html"))), 10));
-    const row = (name) => cart.locator("#rows tr", { hasText: name });
-    assert.ok(await until(async () => (await cart.locator("#rows tr").count()) === 11, 10));
+    const row = (name) => cart.locator("#rows .item", { hasText: name });
+    assert.ok(await until(async () => (await cart.locator("#rows .item").count()) === 11, 10));
     assert.match(await row("Ditalini Pasta").innerText(), /Searched: barilla ditalini pasta \(suggested\)/);
-    assert.match(await row("Cut Up Fryer Chicken").innerText(), /Searched: whole chicken cut up · change/);
+    assert.match(await row("Cut Up Fryer Chicken").locator(".meta").innerText(), /Searched: whole chicken cut up(?! \(suggested\))/);
 
     // The other ten went to the inbox with the rules' guess, once.
     const pendingKeys = () => g.get({ action: "pending", token }).words.map((w) => w.key);
@@ -104,7 +104,7 @@ test("cart page uses suggested searches and sends new ingredients for the next r
     // Opening the list again uses it and doesn't send anything twice.
     const rowsBefore = g.sheets["Search words"].rows.length;
     await cart.reload();
-    assert.ok(await until(async () => (await cart.locator("#rows tr").count()) === 11, 10));
+    assert.ok(await until(async () => (await cart.locator("#rows .item").count()) === 11, 10));
     assert.match(await row("Cut Up Fryer Chicken").innerText(), /Searched: whole fryer chicken cut up \(suggested\)/);
     await cart.waitForTimeout(1000);
     assert.equal(g.sheets["Search words"].rows.length, rowsBefore);

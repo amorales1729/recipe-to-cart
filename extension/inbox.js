@@ -148,7 +148,7 @@ export async function importLink(url) {
   } catch {
     recipe = await readInBackgroundTab(url);
   }
-  return saveRecipe(recipe);
+  return saveRecipe({ ...recipe, fromPhone: true });
 }
 
 async function importWaiting(item) {

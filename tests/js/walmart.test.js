@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { AISLES, aisleFor } from "../../extension/lib/aisles.js";
 import { buildPlan, productOptions } from "../../extension/lib/plan.js";
 import { pickCheapest, pickProduct } from "../../extension/lib/rank.js";
 import { searchQuery } from "../../extension/lib/search.js";
@@ -88,8 +89,10 @@ test("plan: shopping list, pantry line, spice list, your own searches", () => {
   const plan = buildPlan(recipes, ["olive oil"], { onion: "white onion" });
   assert.deepEqual(plan.recipes, ["Tacos"]);
   assert.deepEqual(plan.items.map((i) => [i.name, i.amount, i.query]), [["ground beef", "1 lb", "ground beef"], ["onion", "1", "white onion"]]);
-  assert.deepEqual(plan.pantrySkipped, [{ name: "olive oil", amount: "1 tbsp", searchUrl: searchUrl("olive oil") }]);
-  assert.deepEqual(plan.spices, [{ name: "chili powder", amount: "2 tsp", searchUrl: searchUrl("chili powder") }]);
+  const brief = ({ name, amount, searchUrl }) => ({ name, amount, searchUrl });
+  assert.deepEqual(plan.pantrySkipped.map(brief), [{ name: "olive oil", amount: "1 tbsp", searchUrl: searchUrl("olive oil") }]);
+  assert.deepEqual(plan.spices.map(brief), [{ name: "chili powder", amount: "2 tsp", searchUrl: searchUrl("chili powder") }]);
+  assert.deepEqual([plan.spices[0].quantity, plan.spices[0].unit, plan.spices[0].query], [2, "teaspoon", "chili powder"]);
 });
 
 test("plan: your searches win, then suggested ones, then the rules", () => {
@@ -117,4 +120,26 @@ test("checkout is always blocked", () => {
   for (const url of ["https://www.walmart.com/checkout", "https://www.walmart.com/checkout/review-order?x=1",
     "https://www.walmart.com/payment", "https://www.walmart.com/place-order"]) assert.ok(isBlockedUrl(url), url);
   for (const url of ["https://www.walmart.com/cart", "https://www.walmart.com/ip/x/222", searchUrl("heavy cream")]) assert.ok(!isBlockedUrl(url), url);
+});
+
+test("product photos come along with search results", () => {
+  const items = [
+    { __typename: "Product", usItemId: "1", name: "Onion", price: 1, imageInfo: { thumbnailUrl: "https://i5.walmartimages.com/a.jpg" } },
+    { __typename: "Product", usItemId: "2", name: "Leek", price: 1, image: "https://i5.walmartimages.com/b.jpg" },
+    { __typename: "Product", usItemId: "3", name: "Kale", price: 1 },
+  ];
+  const html = `<script id="__NEXT_DATA__">${JSON.stringify({ props: { items } })}</script>`;
+  assert.deepEqual(parseSearchPage(html).map((p) => p.image),
+    ["https://i5.walmartimages.com/a.jpg", "https://i5.walmartimages.com/b.jpg", ""]);
+});
+
+test("aisles group the cart page like a walk through the store", () => {
+  const cases = [
+    ["Cut Up Fryer Chicken", "", "meat"], ["Low Sodium Chicken Broth", "cup", "pantry"], ["Whole Tomatoes", "can", "pantry"],
+    ["Green Bell Peppers", "", "produce"], ["Heavy Cream", "cup", "dairy"], ["peanut butter", "tablespoon", "pantry"],
+    ["eggs", "", "dairy"], ["flour tortillas", "", "bakery"], ["raisins", "cup", "baking"], ["frozen peas", "bag", "frozen"],
+    ["Ditalini Pasta", "box", "pantry"], ["taco seasoning", "packet", "pantry"], ["paper towels", "", "other"],
+  ];
+  for (const [name, unit, want] of cases) assert.equal(aisleFor(name, unit), want, name);
+  assert.ok(cases.every(([, , a]) => AISLES.some(([id]) => id === a)));
 });

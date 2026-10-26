@@ -2,43 +2,64 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Recipe to Cart: recipes</title>
   <link rel="stylesheet" href="cart.css">
 </head>
 <body>
-  <header>
-    <h1>Recipe to Cart</h1>
-    <p class="muted">On any recipe page, click the Recipe to Cart button in Chrome's toolbar. It saves the recipe and starts your Walmart cart.</p>
+  <header class="topbar">
+    <div class="inner">
+      <a class="brand" href="app.html">
+        <span class="mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6L5 3H2"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg></span>
+        Recipe to Cart
+      </a>
+      <nav class="tabs" aria-label="Main">
+        <a href="app.html" aria-current="page">Recipes</a>
+        <a href="phone.html">Phone setup</a>
+      </nav>
+    </div>
   </header>
 
-  <section id="status" class="card" hidden></section>
-
-  <section class="card">
-    <h2>Your recipes</h2>
-    <p id="empty" class="muted" hidden>No recipes yet.</p>
-    <ul id="recipe-list" class="recipes"></ul>
-    <div class="actions">
-      <button id="shop" class="primary" disabled>Shop for checked recipes</button>
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <h1>Your recipes</h1>
+        <p class="muted">Pick the ones you're cooking. Their ingredients become one shopping list. To add a recipe, click the Recipe to Cart button in Chrome's toolbar on any recipe page.</p>
+      </div>
+      <div class="actions" style="margin-top: 0">
+        <span id="picked" class="muted small"></span>
+        <button id="shop" class="primary" disabled>Pick a recipe</button>
+      </div>
     </div>
-  </section>
 
-  <section class="card">
-    <h2>Paste a recipe</h2>
-    <p class="muted small">From Apple Notes, a text, or a site the button can't read. Put the ingredients under a line that says "Ingredients".</p>
-    <input id="paste-title" type="text" placeholder="Title (optional)">
-    <textarea id="paste-text" rows="8" placeholder="Ingredients&#10;2 cups heavy cream&#10;1 onion, diced&#10;&#10;Instructions&#10;1. ..."></textarea>
-    <div class="actions"><button id="paste-save" class="primary">Save recipe</button></div>
-  </section>
+    <section id="status" class="card" role="status" hidden></section>
 
-  <section class="card" id="pantry">
-    <h2>Pantry staples</h2>
-    <p class="muted small">Always left off the shopping list. Salt and black pepper are never listed.</p>
-    <ul id="pantry-list" class="chips"></ul>
-    <form id="pantry-form" class="actions">
-      <input id="pantry-add" type="text" placeholder="Add a staple, like butter">
-      <button class="primary" type="submit">Add</button>
-    </form>
-  </section>
+    <p id="empty" class="empty muted" hidden>No recipes yet. Open a recipe page and click the Recipe to Cart button, or paste one below.</p>
+    <ul id="recipe-list" class="recipe-grid"></ul>
+
+    <div class="grid-2">
+      <section class="card">
+        <h2>Paste a recipe</h2>
+        <p class="muted small">From Apple Notes, a text, or a site the button can't read. Put the ingredients under a line that says "Ingredients".</p>
+        <label for="paste-title">Title</label>
+        <input id="paste-title" type="text" placeholder="Optional">
+        <label for="paste-text" style="display: block; margin-top: 12px">Recipe text</label>
+        <textarea id="paste-text" rows="7" placeholder="Ingredients&#10;2 cups heavy cream&#10;1 onion, diced&#10;&#10;Instructions&#10;1. ..."></textarea>
+        <div class="actions"><button id="paste-save" class="ghost">Save recipe</button></div>
+      </section>
+
+      <section class="card" id="pantry">
+        <h2>Pantry staples</h2>
+        <p class="muted small">Left out of the cart. They still show at the bottom of your shopping list with an Add to cart button. Salt and black pepper are never listed.</p>
+        <ul id="pantry-list" class="chips"></ul>
+        <form id="pantry-form">
+          <label for="pantry-add" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Add a staple</label>
+          <input id="pantry-add" type="text" placeholder="Add a staple, like butter">
+          <button class="ghost" type="submit">Add</button>
+        </form>
+      </section>
+    </div>
+  </main>
 
   <script type="module" src="app.js"></script>
 </body>

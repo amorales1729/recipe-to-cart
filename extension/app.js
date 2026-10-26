@@ -14,19 +14,53 @@ function escapeHtml(s) {
 }
 
 const checked = () => [...document.querySelectorAll("#recipe-list input:checked")].map((c) => c.value);
+const COLORS = ["#b5532f", "#c2862b", "#4f7a3a", "#7a4a8c", "#2f6f8f", "#9a3f5c"];
+const colorFor = (title) => COLORS[[...title].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 997, 7) % COLORS.length];
+
+// Percent-encode what would end a CSS url('...').
+const cssUrl = (url) => url.replace(/['"()\\\s]/g, (c) => `%${c.charCodeAt(0).toString(16).padStart(2, "0")}`);
+
+function source(r) {
+  if (!r.url) return "Pasted recipe";
+  try { return new URL(r.url).hostname.replace(/^www\./, ""); } catch { return ""; }
+}
+
+function updateShop() {
+  const n = checked().length;
+  $("shop").disabled = !n;
+  $("shop").textContent = n ? `Shop for ${n} ${n === 1 ? "recipe" : "recipes"}` : "Pick a recipe";
+  $("picked").textContent = n ? `${n} selected` : "";
+}
 
 async function showRecipes() {
   const list = await storage.recipes();
   $("empty").hidden = list.length > 0;
-  $("recipe-list").innerHTML = list.map((r) => `
-    <li>
-      <label><input type="checkbox" value="${escapeHtml(r.id)}"> <strong>${escapeHtml(r.title)}</strong></label>
-      <span class="muted small">${r.lines.length} ingredients</span>
-      ${r.url ? `<a class="small" href="${escapeHtml(r.url)}" target="_blank">page</a>` : ""}
-      <button class="link small show">ingredients</button>
-      <button class="link small delete">delete</button>
-      <ul class="lines small" hidden>${r.lines.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ul>
-    </li>`).join("");
+  $("recipe-list").innerHTML = list.map((r) => {
+    const photo = r.image
+      ? `style="background-image: url('${escapeHtml(cssUrl(r.image))}')"`
+      : `style="background-color: ${colorFor(r.title)}"`;
+    return `
+    <li class="recipe-card">
+      <label class="pick">
+        <input type="checkbox" value="${escapeHtml(r.id)}" aria-label="Shop for ${escapeHtml(r.title)}">
+        <div class="photo" ${photo}>${r.image ? "" : escapeHtml(r.title.slice(0, 1))}</div>
+        <div class="body">
+          <div class="title">${escapeHtml(r.title)}</div>
+          <div class="source">${escapeHtml(source(r))}</div>
+          <div class="tags">
+            <span class="tag">${r.lines.length} ingredients</span>
+            ${r.fromPhone ? `<span class="tag blue">From your iPhone</span>` : ""}
+          </div>
+        </div>
+      </label>
+      <div class="links">
+        <button class="link show">Ingredients</button>
+        ${r.url ? `<a href="${escapeHtml(r.url)}" target="_blank">Open recipe</a>` : ""}
+        <button class="link delete">Delete</button>
+      </div>
+      <ul class="lines" hidden>${r.lines.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ul>
+    </li>`;
+  }).join("");
   $("recipe-list").querySelectorAll(":scope > li").forEach((li, i) => {
     li.querySelector(".show").addEventListener("click", () => { const lines = li.querySelector(".lines"); lines.hidden = !lines.hidden; });
     li.querySelector(".delete").addEventListener("click", async () => {
@@ -34,9 +68,9 @@ async function showRecipes() {
       await storage.deleteRecipe(list[i].id);
       showRecipes();
     });
-    li.querySelector("input").addEventListener("change", () => { $("shop").disabled = !checked().length; });
+    li.querySelector("input").addEventListener("change", updateShop);
   });
-  $("shop").disabled = true;
+  updateShop();
 }
 
 async function showPantry() {
