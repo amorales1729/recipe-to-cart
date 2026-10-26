@@ -272,15 +272,15 @@ function updateTotal() {
   for (const row of rows.values()) {
     const o = selected(row);
     const n = Number(row.el.querySelector("input[type=number]").value || 0);
-    const line = o ? (o.price || 0) * n : 0;
-    row.el.querySelector(".line-total").textContent = o ? money(line) : "";
+    const line = o && o.price > 0 ? o.price * n : null;
+    row.el.querySelector(".line-total").textContent = !o ? "" : line === null ? "No price" : money(line);
     row.el.querySelector(".each").textContent = o && n > 1 ? `${money(o.price)} each` : "";
     if (!included(row)) continue;
     count++;
     if (!settled(row)) toAdd++;
-    total += line;
+    total += line || 0;
     const s = bySection.get(row.item.aisle) || { count: 0, total: 0 };
-    bySection.set(row.item.aisle, { count: s.count + 1, total: s.total + line });
+    bySection.set(row.item.aisle, { count: s.count + 1, total: s.total + (line || 0) });
   }
   for (const section of document.querySelectorAll(".aisle")) {
     const s = bySection.get(section.dataset.aisle) || { count: 0, total: 0 };
