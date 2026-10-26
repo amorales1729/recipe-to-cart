@@ -159,11 +159,12 @@ function itemRow(item) {
     <input type="checkbox" class="include" checked aria-label="Include ${escapeHtml(item.name)}">
     <div class="thumb">${PHOTO}</div>
     <div class="info">
-      <div><span class="ing">${escapeHtml(item.name)}</span><span class="need">${item.amount === "as needed" ? "As needed" : `Need ${escapeHtml(item.amount)}`} · ${escapeHtml(item.sources.join(", "))}</span></div>
+      <div><span class="ing query">${escapeHtml(item.query)}</span><span class="need">${item.amount === "as needed" ? "As needed" : `Need ${escapeHtml(item.amount)}`}</span></div>
+      <div class="from">(${escapeHtml(item.name)}) · ${escapeHtml(item.sources.join(", "))}</div>
       <div class="product"><span class="muted small">Not searched yet</span></div>
       <div class="meta">
         <span class="tags"></span>
-        <span class="muted">Searched: <span class="query">${escapeHtml(item.query)}</span><span class="by">${item.querySource === "suggested" ? " (suggested)" : ""}</span></span>
+        <span class="tag by" ${item.querySource === "suggested" ? "" : "hidden"}>Suggested search</span>
         <button class="chip-btn change">${SEARCH}Change search</button>
       </div>
     </div>
@@ -224,8 +225,7 @@ function showOptions(row, saved = null) {
     qty.value = o.qty;
     const thumb = row.el.querySelector(".thumb");
     thumb.innerHTML = o.image ? `<img src="${escapeHtml(o.image)}" alt="" style="width: 100%; height: 100%; object-fit: contain">` : PHOTO;
-    const tags = [o.cheapest && `<span class="tag green">Cheapest</span>`, o.usual && `<span class="tag blue">Your usual</span>`,
-      row.item.querySource === "suggested" && `<span class="tag">Suggested search</span>`];
+    const tags = [o.cheapest && `<span class="tag green">Cheapest</span>`, o.usual && `<span class="tag blue">Your usual</span>`];
     row.el.querySelector(".tags").innerHTML = tags.filter(Boolean).join(" ");
   };
   select.addEventListener("change", () => { apply(); changed(); });
@@ -424,7 +424,7 @@ function searchRow(row, typedQuery = null) {
     row.item.query = query; // products are ranked against what was searched
     if (typedQuery) {
       row.item.querySource = "you";
-      row.el.querySelector(".by").textContent = "";
+      row.el.querySelector(".by").hidden = true;
     }
     row.item.searchUrl = url;
     row.el.querySelector(".product").innerHTML = `<span class="muted small">Finding…</span>`;

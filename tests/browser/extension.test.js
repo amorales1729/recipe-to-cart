@@ -106,7 +106,7 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
     assert.match(await picked("Ditalini Pasta"), /^Clover Valley ditalini pasta, 16 oz · \$1\.75 · cheapest$/);
     assert.match(await picked("Low Sodium Chicken Broth"), /^Great Value low sodium chicken broth, 32 oz · \$2\.50 · cheapest$/);
     assert.equal(await row("Low Sodium Chicken Broth").locator("input[type=number]").inputValue(), "2");
-    assert.match(await row("Cut Up Fryer Chicken").locator(".query").innerText(), /^whole chicken cut up$/);
+    assert.match(await row("Cut Up Fryer Chicken").locator(".query").innerText(), /^whole chicken cut up$/i);
 
     // Grouped by aisle, with the picked product's photo.
     assert.equal(await cart.locator(".aisle[data-aisle=meat] .item", { hasText: "Cut Up Fryer Chicken" }).count(), 1);
