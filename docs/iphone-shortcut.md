@@ -84,7 +84,7 @@ Everything here is on the iPhone. First get the **Web app URL** and **token** on
 
 ### Optional: keep a list in Apple Notes
 
-The shortcut can also add each recipe's name and link to a note called **Recipe to Cart**, so you
+The shortcut can also add each recipe to a note called **Recipe to Cart**, so you
 have a running list on your phone. It sends the name to the inbox too, so the Chrome page shows it
 right away.
 
@@ -95,14 +95,14 @@ right away.
 3. In **Get Contents of URL**, add one more **Text** field: key `title`, and for the value tap
    **Name** above the keyboard.
 4. At the bottom, add a **Text** action containing
-   `<ul><li>` **Name** ` – ` **Shortcut Input** `</li></ul>` (tap **Name** and **Shortcut Input**
-   above the keyboard). The HTML makes each recipe a real bullet in Notes.
+   `<ul><li><a href="` **Shortcut Input** `">` **Name** `</a></li></ul>` (tap **Shortcut Input**
+   and **Name** above the keyboard). Each recipe becomes a bullet with its name as a tappable link.
 5. Add **Make Rich Text from HTML**, then **Append to Note**. In Append to Note, pick
    **Recipe to Cart** as the note and **Rich Text from HTML** as the text.
 6. Tap **Done**. The first time it runs, allow the shortcut to use Notes.
 
-Shared from Safari, you get the page's title. Some apps don't share a title, and then the line is
-just the link.
+Shared from Safari, you get the page's title. Some apps don't share a title, and then the bullet has
+no name; tap and edit it in Notes.
 
 ## Use it
 
