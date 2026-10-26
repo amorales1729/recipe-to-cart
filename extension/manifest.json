@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Recipe to Cart",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "description": "Turns a recipe page into a Walmart cart: reads the ingredients, skips pantry staples, picks the cheapest match. Never checks out.",
   "action": {
     "default_title": "Recipe to Cart: shop for this recipe"
@@ -25,5 +25,5 @@
   "optional_host_permissions": [
     "<all_urls>"
   ],
-  "options_page": "phone.html"
+  "options_page": "settings.html"
 }

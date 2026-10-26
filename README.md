@@ -34,14 +34,14 @@ the reload arrow on Recipe to Cart in `chrome://extensions`.
    up fryer chicken" is searched as "whole chicken cut up", "jalapenos" as "jalapeno peppers").
 3. **Check the list.** Each item shows the product, price, and quantity. Change a product with its
    dropdown, fix a quantity, or untick an item. If a search found the wrong kind of thing, click
-   **change** and type a better search; it's remembered for that ingredient. Click **I always have
-   this** to add an item to your pantry staples.
+   **Change search** and type a better search; it's remembered for that ingredient.
 4. Click **Add to Walmart cart.** It adds each item and opens your Walmart cart. Check out yourself
-   whenever you're ready.
+   whenever you're ready. **Stop** pauses a search or an add; **Pick up where I left off** carries
+   on, and **Start over** searches everything again. The list stays put if you switch tabs.
 
-To shop for several recipes at once, click **Add more recipes** (or the button on any non-recipe
-page) to open your saved recipes, tick the ones you want, and click **Shop for checked recipes**.
-Recipes from Apple Notes or a text can be pasted there too.
+To shop for several recipes at once, open the **Recipes** tab (or click the button on any
+non-recipe page), tick the ones you want, and click **Shop for N recipes**. The gear at the top
+right opens **Settings** for the iPhone inbox.
 
 ## Send recipes from your iPhone
 
@@ -57,8 +57,9 @@ came up with, and a scheduled task suggests better Walmart wording that the exte
 ## What goes on the list
 
 - **Salt and black pepper** are never listed. Fresh peppers (bell, jalapeno) are groceries.
-- **Pantry staples** (cooking oils, cooking spray, water, and anything you add) are left off. Edit
-  them on the recipes page.
+- **Pantry staples** (cooking oils, cooking spray, water, flour, sugar and the like) are left off.
+  The search-words task decides which ingredients count. They're still listed at the bottom of
+  your shopping list with an **Add to cart** button in case you're running low.
 - **Spices and seasonings** from the spice rack (ground cumin, paprika, dried oregano, red pepper
   flakes, Italian seasoning) go on a separate list to check against your rack, and aren't added to
   the cart. Packets and mixes (taco seasoning packet, gravy mix, onion soup mix) and fresh herbs are

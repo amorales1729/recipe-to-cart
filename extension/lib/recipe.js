@@ -110,7 +110,7 @@ export function fromPage(page) {
     return { ...fromText(page.selection, null), url: page.url || "", image: imageUrl(page.ogImage) };
   }
   throw new RecipeError(
-    "No recipe found on this page. Select the recipe text on the page and click the button again, or paste it on the Recipes page.",
+    "No recipe found on this page. Select the recipe text on the page and click the button again.",
   );
 }
 

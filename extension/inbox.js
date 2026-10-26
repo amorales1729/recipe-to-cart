@@ -1,6 +1,6 @@
 // Recipes sent from your iPhone wait in your Google inbox (apps-script/Code.gs) until Chrome
 // is open. This file picks them up, saves each one as a recipe, and shows a badge on the
-// toolbar button. Used by background.js (polling every few minutes) and phone.html.
+// toolbar button. Used by background.js (polling every few minutes), the Recipes page and Settings.
 import { fromHtml, fromPage, readRecipePage } from "./lib/recipe.js";
 import { askedWords, suggestedWords, markAsked, saveSuggestedWords, saveRecipe } from "./lib/storage.js";
 
@@ -35,6 +35,12 @@ async function updateWaiting(id, changes) {
 export async function removeWaiting(ids) {
   const drop = new Set(ids);
   await setWaiting((await getWaiting()).filter((r) => !drop.has(r.id)));
+}
+
+/** Once you shop for (or delete) a recipe from your phone, it's no longer new. */
+export async function clearRecipes(recipeIds) {
+  const done = new Set(recipeIds);
+  await setWaiting((await getWaiting()).filter((r) => !done.has(r.recipeId)));
 }
 
 export async function updateBadge(list) {
@@ -139,7 +145,7 @@ async function readInBackgroundTab(url) {
 /** Read and save the recipe behind a link. Throws with a message you can show. */
 export async function importLink(url) {
   if (!(await chrome.permissions.contains(ALL_SITES))) {
-    throw new Error("Allow the extension to read recipe sites (in the settings below), or open the link and click the toolbar button.");
+    throw new Error("Allow the extension to read recipe sites (Save in Settings), or open the link and click the toolbar button.");
   }
   let recipe;
   try {
@@ -179,6 +185,14 @@ export async function shop(items, { auto = false } = {}) {
 /** Retry links that couldn't be read before (for example after you allowed site access). */
 export async function retryFailed() {
   for (const item of await getWaiting()) if (!item.recipeId) await importWaiting(item);
+}
+
+/** Read one waiting link again, for the Try again button. */
+export async function retry(id) {
+  const item = (await getWaiting()).find((r) => r.id === id);
+  if (!item || item.recipeId) return;
+  await updateWaiting(id, { error: null });
+  await importWaiting(item);
 }
 
 // ---- polling ----

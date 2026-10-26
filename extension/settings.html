@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recipe to Cart: settings</title>
+  <link rel="stylesheet" href="cart.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <a class="brand" href="app.html">
+        <span class="mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6L5 3H2"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg></span>
+        Recipe to Cart
+      </a>
+      <nav class="tabs" aria-label="Main">
+        <a href="app.html">Recipes</a>
+        <a href="cart.html">Shopping list</a>
+      </nav>
+      <a class="gear" href="settings.html" aria-label="Settings" title="Settings" aria-current="page"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></a>
+    </div>
+  </header>
+
+  <main class="wrap settings">
+    <div class="page-head">
+      <div>
+        <h1>Settings</h1>
+        <p class="muted">Recipes you share from your iPhone with the <strong>Send to Recipe to Cart</strong> shortcut wait in your Google inbox, then show up on the Recipes page.</p>
+      </div>
+    </div>
+
+    <section id="status" class="card" role="status" hidden></section>
+
+    <section class="card">
+      <h2>iPhone inbox</h2>
+      <p class="muted small">From the Google Apps Script setup (see <code>docs/iphone-shortcut.md</code>).</p>
+      <label>Inbox web app URL<input id="inbox-url" type="text" placeholder="https://script.google.com/macros/s/.../exec"></label>
+      <label>Token<input id="token" type="text" placeholder="the token setup() printed"></label>
+      <fieldset>
+        <legend>When a recipe arrives</legend>
+        <label><input type="radio" name="mode" value="review"> Add it to my recipes and wait for me (recommended)</label>
+        <label><input type="radio" name="mode" value="auto"> Fill my Walmart cart right away (still never checks out)</label>
+      </fieldset>
+      <p class="muted small">Recipes arrive as links, so the extension needs permission to read recipe sites. Chrome asks once when you save.</p>
+      <div class="actions">
+        <button id="save" class="primary">Save</button>
+        <button id="test" class="ghost">Test connection</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Checking for new recipes</h2>
+      <p class="muted small">Chrome checks when it starts and every few minutes while it's open.</p>
+      <div class="actions">
+        <button id="check" class="ghost">Check now</button>
+        <span id="last-check" class="muted small"></span>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="settings.js"></script>
+</body>
+</html>
