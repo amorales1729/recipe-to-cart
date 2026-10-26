@@ -2,7 +2,7 @@
 // is open. This file picks them up, saves each one as a recipe, and shows a badge on the
 // toolbar button. Used by background.js (polling every few minutes) and phone.html.
 import { fromHtml, fromPage, readRecipePage } from "./lib/recipe.js";
-import { saveRecipe } from "./lib/storage.js";
+import { askedWords, suggestedWords, markAsked, saveSuggestedWords, saveRecipe } from "./lib/storage.js";
 
 export const POLL_MINUTES = 5;
 export const ALL_SITES = { origins: ["<all_urls>"] };
@@ -65,9 +65,51 @@ async function call(settings, params) {
   return data;
 }
 
+async function post(settings, body) {
+  // text/plain keeps it a simple request; Apps Script reads the JSON body either way.
+  const res = await fetch(settings.inboxUrl, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify({ ...body, token: settings.token }),
+    redirect: "follow",
+    credentials: "omit",
+  });
+  if (!res.ok) throw new Error(`The inbox answered ${res.status}.`);
+  const data = await res.json();
+  if (!data.ok) throw new Error(`Inbox error: ${data.error}`);
+  return data;
+}
+
 /** Used by the settings "Test" button. Returns how many recipes are waiting in the inbox. */
 export async function testConnection(settings) {
   return ((await call(settings, { action: "list" })).recipes || []).length;
+}
+
+// ---- Suggested Walmart searches (the "Search words" tab in the Sheet) ----
+
+/** Send ingredients the rules searched for, so the scheduled task can suggest a better search. Quietly does nothing without an inbox. */
+export async function askForWords(items) {
+  const settings = await getSettings();
+  if (!settings.inboxUrl || !settings.token) return 0;
+  const asked = await askedWords();
+  const words = items
+    .filter((i) => i.querySource === "rules" && !asked.has(i.key))
+    .map((i) => ({ key: i.key, name: i.name, guess: i.query }));
+  if (!words.length) return 0;
+  await post(settings, { action: "ask", words });
+  await markAsked(words.map((w) => w.key));
+  return words.length;
+}
+
+/** Fetch the suggested searches. Returns the stored ones if there's no inbox or it can't be reached. */
+export async function pullWords() {
+  const settings = await getSettings();
+  if (settings.inboxUrl && settings.token) {
+    try {
+      await saveSuggestedWords((await call(settings, { action: "words" })).words || {});
+    } catch { /* keep what we have */ }
+  }
+  return suggestedWords();
 }
 
 // ---- turning a link into a saved recipe ----
@@ -171,6 +213,7 @@ async function pollOnce() {
     try { await call(settings, { action: "ack", ids: fresh.map((r) => r.id).join(",") }); } catch { /* retried next poll */ }
   }
   await chrome.storage.local.set({ phoneLastCheck: { at: Date.now(), error: null } });
+  await pullWords();
   for (const item of added) await importWaiting(item);
   if (added.length && settings.mode === "auto") {
     const ready = (await getWaiting()).filter((r) => added.some((a) => a.id === r.id) && r.recipeId);

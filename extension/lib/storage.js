@@ -47,6 +47,24 @@ export async function saveSearchTerm(key, query) {
   await set("searchTerms", { ...(await searchTerms()), [key]: query.trim() });
 }
 
+/** Walmart searches suggested by the scheduled task, from the inbox's "Search words" tab: {key: search}. */
+export async function suggestedWords() {
+  return get("suggestedWords", {});
+}
+
+export async function saveSuggestedWords(words) {
+  await set("suggestedWords", words);
+}
+
+/** Ingredients already sent to the inbox for a suggested search. */
+export async function askedWords() {
+  return new Set(await get("askedWords", []));
+}
+
+export async function markAsked(keys) {
+  await set("askedWords", [...new Set([...(await askedWords()), ...keys])]);
+}
+
 /** Last time's product per ingredient: {key: {id, name, url}}. */
 export async function choices() {
   return get("choices", {});

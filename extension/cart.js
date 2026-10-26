@@ -1,6 +1,7 @@
 import { buildPlan, productOptions } from "./lib/plan.js";
 import * as storage from "./lib/storage.js";
 import { parseSearchPage, searchUrl } from "./lib/walmart.js";
+import { askForWords, pullWords } from "./inbox.js";
 import { addToCartInPage, isBlockedUrl, readPageHtml } from "./walmart_page.js";
 
 const $ = (id) => document.getElementById(id);
@@ -73,7 +74,7 @@ function render() {
     tr.innerHTML = `
       <td><input type="checkbox" checked aria-label="Include ${item.name}"></td>
       <td>${escapeHtml(item.amount)} ${escapeHtml(item.name)}
-        <div class="muted small">Searched: <span class="query">${escapeHtml(item.query)}</span>
+        <div class="muted small">Searched: <span class="query">${escapeHtml(item.query)}</span><span class="by">${item.querySource === "suggested" ? " (suggested)" : ""}</span>
           · <button class="link change">change</button>
           · <button class="link have">I always have this</button></div></td>
       <td class="product"><span class="muted">Finding…</span></td>
@@ -160,6 +161,10 @@ async function searchRow(row, typedQuery = null) {
   const query = typedQuery || row.item.query;
   const url = searchUrl(query);
   row.item.query = query; // products are ranked against what was searched
+  if (typedQuery) {
+    row.item.querySource = "you";
+    row.el.querySelector(".by").textContent = "";
+  }
   row.item.searchUrl = url;
   row.el.querySelector(".product").innerHTML = `<span class="muted">Finding…</span>`;
   row.el.querySelector(".state").textContent = "";
@@ -262,7 +267,11 @@ async function main() {
       or pick some on <a href="app.html">your recipes</a>.`, "bad");
     return;
   }
-  plan = buildPlan(chosen, await storage.pantry(), await storage.searchTerms());
+  setStatus("Loading your list…");
+  const words = await withTimeout(pullWords(), 5000, storage.suggestedWords());
+  plan = buildPlan(chosen, await storage.pantry(), await storage.searchTerms(), words);
+  // Ingredients the rules had to guess at go to the inbox for the next suggestion run. Never holds up shopping.
+  askForWords(plan.items).catch(() => {});
   usual = await storage.choices();
   render();
   $("add").addEventListener("click", addAll);
@@ -270,6 +279,11 @@ async function main() {
   updateTotal();
   // cart.html?recipes=...&auto=1 adds the picks without waiting for the review click.
   if (new URLSearchParams(location.search).get("auto") === "1" && !$("add").disabled) await addAll();
+}
+
+// The inbox is a nice-to-have here: don't wait long for it.
+function withTimeout(promise, ms, fallback) {
+  return Promise.race([promise.catch(() => fallback), new Promise((r) => setTimeout(r, ms)).then(() => fallback)]);
 }
 
 main();

@@ -124,6 +124,14 @@ Want it now instead of within 5 minutes? Open **Recipes from your phone** and cl
 Every link stays in the Google Sheet with its status (`waiting` or `picked up`), so you have a
 history and can delete old rows whenever you like.
 
+## Better Walmart searches (the "Search words" tab)
+
+Once the inbox is connected, the extension also sends each new ingredient to a **Search words**
+tab in the same Sheet, along with the search the built-in rules came up with. A scheduled task
+fills in the **walmart search** column with wording Walmart understands better, and the extension
+uses it from then on. You can type in that column yourself too. A search you set with **change**
+on the cart page always wins.
+
 ## Changing the inbox code later
 
 If `apps-script/Code.gs` changes, paste the new version into the Apps Script editor, then
