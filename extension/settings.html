@@ -49,8 +49,26 @@
     </section>
 
     <section class="card">
+      <h2>Instant pickup and phone alerts</h2>
+      <p class="muted small">Uses <strong>ntfy.sh</strong>, a free push service with no account. Your inbox pings a private
+        channel the moment a recipe arrives, so Chrome starts right away instead of at the next check. In
+        <strong>Fill my Walmart cart right away</strong> mode, your phone also gets a note when the cart is ready or Walmart
+        needs you. The pings never include your recipes. Save after turning it on or off.</p>
+      <label><input id="push" type="checkbox"> Pick up recipes instantly and send alerts to my phone</label>
+      <div id="push-details" hidden>
+        <label>Subscribe to this channel in the free ntfy app on your iPhone
+          <input id="alerts-topic" type="text" readonly></label>
+        <p class="muted small">Keep it private: anyone with the name can read the alerts.</p>
+        <div class="actions">
+          <button id="test-alert" class="ghost">Send a test alert</button>
+          <button id="new-topic" class="ghost">Make a new channel</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
       <h2>Checking for new recipes</h2>
-      <p class="muted small">Chrome checks when it starts and every few minutes while it's open.</p>
+      <p class="muted small">Chrome checks when it starts and every 5 minutes while it's running, as a backup to instant pickup.</p>
       <div class="actions">
         <button id="check" class="ghost">Check now</button>
         <span id="last-check" class="muted small"></span>

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Recipe to Cart",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "Turns a recipe page into a Walmart cart: reads the ingredients, skips pantry staples, picks the cheapest match. Never checks out.",
   "action": {
     "default_title": "Recipe to Cart: shop for this recipe"
@@ -13,6 +13,9 @@
   "permissions": [
     "activeTab",
     "alarms",
+    "background",
+    "offscreen",
+    "power",
     "scripting",
     "storage",
     "tabs"
@@ -20,7 +23,8 @@
   "host_permissions": [
     "https://www.walmart.com/*",
     "https://script.google.com/*",
-    "https://script.googleusercontent.com/*"
+    "https://script.googleusercontent.com/*",
+    "https://ntfy.sh/*"
   ],
   "optional_host_permissions": [
     "<all_urls>"

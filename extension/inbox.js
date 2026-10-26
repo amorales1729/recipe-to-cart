@@ -3,10 +3,12 @@
 // toolbar button. Used by background.js (polling every few minutes), the Recipes page and Settings.
 import { fromHtml, fromPage, readRecipePage } from "./lib/recipe.js";
 import { askedWords, suggestedWords, markAsked, saveSuggestedWords, saveRecipe } from "./lib/storage.js";
+import { notifyPhone } from "./push.js";
 
 export const POLL_MINUTES = 5;
 export const ALL_SITES = { origins: ["<all_urls>"] };
-const DEFAULTS = { inboxUrl: "", token: "", mode: "review" }; // mode: "review" | "auto"
+// mode: "review" | "auto". push: instant pickup and phone alerts through ntfy.sh (push.js).
+const DEFAULTS = { inboxUrl: "", token: "", mode: "review", push: false, pushTopic: "" };
 
 export async function getSettings() {
   const { phoneSettings } = await chrome.storage.local.get("phoneSettings");
@@ -84,6 +86,11 @@ async function post(settings, body) {
   const data = await res.json();
   if (!data.ok) throw new Error(`Inbox error: ${data.error}`);
   return data;
+}
+
+/** Tell the inbox which ntfy.sh channel to ping when a recipe arrives ("" stops the pings). */
+export async function setPushTopic(settings, topic) {
+  await post(settings, { action: "push", topic });
 }
 
 /** Used by the settings "Test" button. Returns how many recipes are waiting in the inbox. */
@@ -179,7 +186,13 @@ export async function shop(items, { auto = false } = {}) {
   const ids = items.map((r) => r.recipeId).filter(Boolean);
   if (!ids.length) return null;
   await removeWaiting(items.filter((r) => r.recipeId).map((r) => r.id));
-  return chrome.tabs.create({ url: cartPageUrl(ids, auto), active: !auto });
+  const url = cartPageUrl(ids, auto);
+  // Chrome can be running in the background with every window closed; the list needs one to work in.
+  if (!(await chrome.windows.getAll({ windowTypes: ["normal"] })).length) {
+    const win = await chrome.windows.create({ url, focused: !auto });
+    return win.tabs[0];
+  }
+  return chrome.tabs.create({ url, active: !auto });
 }
 
 /** Retry links that couldn't be read before (for example after you allowed site access). */
@@ -198,16 +211,37 @@ export async function retry(id) {
 // ---- polling ----
 
 let polling = null;
+let again = false;
 
 /** Pick up new recipes from the inbox. Returns { added, error }. */
 export function poll() {
-  polling = polling || pollOnce().finally(() => { polling = null; });
+  if (polling) {
+    // A ping can land while a check is already under way; check once more after it so that recipe isn't missed.
+    again = true;
+    return polling;
+  }
+  polling = pollOnce().finally(() => {
+    polling = null;
+    if (again) { again = false; poll(); }
+  });
   return polling;
 }
 
 async function pollOnce() {
   const settings = await getSettings();
   if (!settings.inboxUrl || !settings.token) return { added: [], error: null };
+  // A PC woken by a timer goes back to sleep after a couple of idle minutes; stay up while reading recipes.
+  chrome.power?.requestKeepAwake("system");
+  let result;
+  try {
+    return (result = await checkInbox(settings));
+  } finally {
+    // The shopping list it opened stays awake until it's done, then lets the PC sleep.
+    if (!result?.shopping) chrome.power?.releaseKeepAwake();
+  }
+}
+
+async function checkInbox(settings) {
   let fresh;
   try {
     fresh = (await call(settings, { action: "list" })).recipes || [];
@@ -229,10 +263,19 @@ async function pollOnce() {
   await chrome.storage.local.set({ phoneLastCheck: { at: Date.now(), error: null } });
   await pullWords();
   for (const item of added) await importWaiting(item);
+  let shopping = false;
   if (added.length && settings.mode === "auto") {
-    const ready = (await getWaiting()).filter((r) => added.some((a) => a.id === r.id) && r.recipeId);
-    await shop(ready, { auto: true });
+    const mine = (await getWaiting()).filter((r) => added.some((a) => a.id === r.id));
+    const unread = mine.filter((r) => !r.recipeId);
+    if (unread.length) {
+      await notifyPhone({
+        title: `Couldn't read ${unread.length === 1 ? "a recipe" : `${unread.length} recipes`}`,
+        message: `${unread.map((r) => r.title || r.url).join("\n")}\nIt's waiting on the Recipes page in Chrome.`,
+        tags: "warning",
+      });
+    }
+    shopping = Boolean(await shop(mine.filter((r) => r.recipeId), { auto: true }));
   }
   await updateBadge();
-  return { added, error: null };
+  return { added, error: null, shopping };
 }
