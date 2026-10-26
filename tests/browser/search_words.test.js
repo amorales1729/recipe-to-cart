@@ -86,10 +86,11 @@ test("cart page uses suggested searches and sends new ingredients for the next r
     const row = (name) => cart.locator("#rows .item", { hasText: name });
     assert.ok(await until(async () => (await cart.locator("#rows .item").count()) === 11, 10));
     // The row leads with the Walmart search; the recipe's wording is underneath.
-    const searched = async (name) => [(await row(name).locator(".query").innerText()).toLowerCase(), await row(name).locator(".by").isVisible()];
-    assert.deepEqual(await searched("Ditalini Pasta"), ["barilla ditalini pasta", true]);
-    assert.deepEqual(await searched("Cut Up Fryer Chicken"), ["whole chicken cut up", false]);
-    assert.match(await row("Cut Up Fryer Chicken").locator(".from").innerText(), /^\(Cut Up Fryer Chicken\) · /);
+    const searched = async (name) => (await row(name).locator(".query").innerText()).toLowerCase();
+    assert.equal(await searched("Ditalini Pasta"), "barilla ditalini pasta");
+    assert.equal(await searched("Cut Up Fryer Chicken"), "whole chicken cut up");
+    assert.equal(await row("Cut Up Fryer Chicken").locator(".from").innerText(), "(Cut Up Fryer Chicken)");
+    assert.equal(await row("Cut Up Fryer Chicken").locator(".tags .tag").innerText(), "Italian Chicken Soup");
 
     // The other ten went to the inbox with the rules' guess, once.
     const pendingKeys = () => g.get({ action: "pending", token }).words.map((w) => w.key);
@@ -109,7 +110,7 @@ test("cart page uses suggested searches and sends new ingredients for the next r
     assert.ok(await until(() => cart.locator("#restart").isVisible(), 60), "first search finished");
     cart.once("dialog", (d) => d.accept());
     await cart.click("#restart");
-    assert.ok(await until(async () => (await searched("Cut Up Fryer Chicken")).join() === "whole fryer chicken cut up,true", 10));
+    assert.ok(await until(async () => (await searched("Cut Up Fryer Chicken")) === "whole fryer chicken cut up", 10));
     await cart.waitForTimeout(1000);
     assert.equal(g.sheets["Search words"].rows.length, rowsBefore);
   } finally {
