@@ -4,6 +4,7 @@ import { buildPlan, productOptions } from "./lib/plan.js";
 import * as storage from "./lib/storage.js";
 import { parseSearchPage, searchUrl } from "./lib/walmart.js";
 import { askForWords, pullWords } from "./inbox.js";
+import { notifyPhone } from "./push.js";
 import { addToCartInPage, isBlockedUrl, readPageHtml } from "./walmart_page.js";
 
 const $ = (id) => document.getElementById(id);
@@ -12,7 +13,8 @@ const money = (n) => (typeof n === "number" ? `$${n.toFixed(2)}` : "");
 
 // The list is saved as you go, so leaving the page and coming back picks up where it was.
 // shoppingList: {recipeIds, plan, rows: {key: {options, pick, qty, include, result}}, extras,
-//   task: null|"finding"|"adding", stopped, done, workerTabId}
+//   task: null|"finding"|"adding", stopped, done, workerTabId, auto}
+// auto: the list was started by a recipe from your phone, so progress goes to the phone as alerts.
 const KEY = "shoppingList";
 
 let session = null;
@@ -63,7 +65,9 @@ async function workerTab() {
   if (workerTabId !== null) {
     try { await chrome.tabs.get(workerTabId); return workerTabId; } catch { workerTabId = null; }
   }
-  const tab = await chrome.tabs.create({ url: "about:blank", active: false });
+  // Same window as this list, which may be the only one if Chrome was running in the background.
+  const here = await chrome.tabs.getCurrent();
+  const tab = await chrome.tabs.create({ url: "about:blank", active: false, ...(here ? { windowId: here.windowId } : {}) });
   workerTabId = tab.id;
   return workerTabId;
 }
@@ -94,10 +98,36 @@ async function runInWorker(func, args = []) {
 async function waitForHuman() {
   await chrome.tabs.update(workerTabId, { active: true });
   setStatus(
-    `<strong>Walmart wants to check you're human.</strong> Finish the check in the Walmart tab, then come back here.
-     <br><button class="primary" id="resume">I'm done, continue</button>`, "bad");
-  await new Promise((r) => { onStop = r; $("resume").addEventListener("click", r, { once: true }); });
+    `<strong>Walmart wants to check you're human.</strong> Finish the check in the Walmart tab. It carries on by itself
+     once Walmart lets you through. <br><button class="primary" id="resume">I'm done, continue</button>`, "bad");
+  if (session.auto) {
+    notifyPhone({
+      title: "Walmart needs you at your PC",
+      message: "Walmart wants to check you're human. Finish the check in Chrome and the cart carries on by itself.",
+      priority: "high",
+      tags: "raising_hand",
+    });
+  }
+  let waiting = true;
+  await new Promise((r) => {
+    onStop = r;
+    $("resume").addEventListener("click", r, { once: true });
+    checkCleared().then(r);
+  });
+  waiting = false;
   onStop = null;
+
+  // Look at the Walmart tab every few seconds until the check is gone.
+  async function checkCleared() {
+    while (waiting) {
+      await sleep(3000);
+      if (!waiting) return;
+      try {
+        const tab = await chrome.tabs.get(workerTabId);
+        if (tab.status === "complete" && !(await runInWorker(readPageHtml)).botCheck) return;
+      } catch { /* the page is changing; look again */ }
+    }
+  }
   if (stopRequested) throw new Stopped("Stopped.");
   setStatus("Continuing…");
 }
@@ -272,15 +302,15 @@ function updateTotal() {
   for (const row of rows.values()) {
     const o = selected(row);
     const n = Number(row.el.querySelector("input[type=number]").value || 0);
-    const line = o ? (o.price || 0) * n : 0;
-    row.el.querySelector(".line-total").textContent = o ? money(line) : "";
+    const line = o && o.price > 0 ? o.price * n : null;
+    row.el.querySelector(".line-total").textContent = !o ? "" : line === null ? "No price" : money(line);
     row.el.querySelector(".each").textContent = o && n > 1 ? `${money(o.price)} each` : "";
     if (!included(row)) continue;
     count++;
     if (!settled(row)) toAdd++;
-    total += line;
+    total += line || 0;
     const s = bySection.get(row.item.aisle) || { count: 0, total: 0 };
-    bySection.set(row.item.aisle, { count: s.count + 1, total: s.total + line });
+    bySection.set(row.item.aisle, { count: s.count + 1, total: s.total + (line || 0) });
   }
   for (const section of document.querySelectorAll(".aisle")) {
     const s = bySection.get(section.dataset.aisle) || { count: 0, total: 0 };
@@ -300,6 +330,8 @@ function updateTotal() {
 // ---- runs: finding products and adding them, either of which you can stop and pick up later ----
 
 async function run(task, body) {
+  // Keep a timer-woken PC from going back to sleep partway through.
+  chrome.power?.requestKeepAwake("system");
   running = task;
   stopRequested = false;
   session.task = task;
@@ -312,7 +344,9 @@ async function run(task, body) {
   } catch (e) {
     failed = true;
     setStatus(escapeHtml(e.message), "bad");
+    if (session.auto) notifyPhone({ title: "Recipe to Cart stopped", message: `${e.message} Open Chrome on your PC to pick up where it left off.`, tags: "warning" });
   } finally {
+    chrome.power?.releaseKeepAwake();
     const stopped = stopRequested || failed;
     session.stopped = stopped;
     if (!stopped) session.task = null;
@@ -540,7 +574,26 @@ function addAll() {
       `<strong>Added ${ok} of ${todo.length} items.</strong> Your Walmart cart is open in the next tab.
        Review it and check out yourself whenever you're ready.`,
       ok === todo.length ? "ok" : "bad");
+    if (session.auto) await notifyPhone(cartReadyAlert());
   }));
+}
+
+// The note for your phone once a list from your phone is in the cart: what went in, and what didn't.
+function cartReadyAlert() {
+  const all = [...rows.values()];
+  const added = all.filter((r) => r.result?.ok);
+  const total = added.reduce((sum, r) => sum + (selected(r)?.price || 0) * Number(r.el.querySelector("input[type=number]").value || 1), 0);
+  const missed = all.filter((r) => included(r) && !r.result?.ok).map((r) => r.item.name);
+  const notFound = all.filter((r) => r.options && !r.options.length).map((r) => r.item.name);
+  const lines = [`${added.length} ${added.length === 1 ? "item" : "items"} added, about ${money(total)}. Nothing is bought until you check out.`];
+  if (missed.length) lines.push(`Couldn't add: ${missed.join(", ")}`);
+  if (notFound.length) lines.push(`Not found on Walmart: ${notFound.join(", ")}`);
+  return {
+    title: `Your Walmart cart is ready: ${plan.recipes.join(", ")}`,
+    message: lines.join("\n"),
+    click: "https://www.walmart.com/cart",
+    tags: missed.length || notFound.length ? "shopping_cart,warning" : "shopping_cart",
+  };
 }
 
 function escapeHtml(s) {
@@ -558,7 +611,7 @@ async function startNew(ids, auto = false) {
   // Ingredients the rules had to guess at go to the inbox for the next suggestion run. Never holds up shopping.
   askForWords(plan.items).catch(() => {});
   extras = [];
-  session = { recipeIds: chosen.map((r) => r.id), task: null, stopped: false, done: false };
+  session = { recipeIds: chosen.map((r) => r.id), task: null, stopped: false, done: false, auto };
   render();
   await save();
   await findProducts();

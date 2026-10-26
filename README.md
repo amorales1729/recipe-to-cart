@@ -51,6 +51,11 @@ your PC. The extension checks when Chrome starts and every 5 minutes, then eithe
 its button for you to review (the default) or fills your Walmart cart right away, if you choose.
 Still free, still never checks out. One-time setup: [docs/iphone-shortcut.md](docs/iphone-shortcut.md).
 
+To make it fully hands-off, turn on **instant pickup**: the inbox pings Chrome through ntfy.sh, a
+free push service, so the cart fills within seconds, even on a PC that's asleep and locked. Your
+phone gets a note when the cart is ready or Walmart needs you. Setup:
+[docs/hands-off.md](docs/hands-off.md).
+
 The same Sheet has a **Search words** tab. New ingredients land there with the search the rules
 came up with, and a scheduled task suggests better Walmart wording that the extension picks up.
 
