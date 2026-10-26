@@ -101,11 +101,12 @@ test("cart page uses suggested searches and sends new ingredients for the next r
     await worker.evaluate(() => globalThis.pollPhoneInbox());
     assert.deepEqual((await storage()).suggestedWords, { "ditalini pasta": "barilla ditalini pasta", "cut up fryer chicken": "whole fryer chicken cut up" });
 
-    // Opening the list again uses it and doesn't send anything twice.
+    // Starting the list over uses it and doesn't send anything twice.
     const rowsBefore = g.sheets["Search words"].rows.length;
-    await cart.reload();
-    assert.ok(await until(async () => (await cart.locator("#rows .item").count()) === 11, 10));
-    assert.match(await row("Cut Up Fryer Chicken").innerText(), /Searched: whole fryer chicken cut up \(suggested\)/);
+    assert.ok(await until(() => cart.locator("#restart").isVisible(), 60), "first search finished");
+    cart.once("dialog", (d) => d.accept());
+    await cart.click("#restart");
+    assert.ok(await until(async () => /Searched: whole fryer chicken cut up \(suggested\)/.test(await row("Cut Up Fryer Chicken").innerText()), 10));
     await cart.waitForTimeout(1000);
     assert.equal(g.sheets["Search words"].rows.length, rowsBefore);
   } finally {

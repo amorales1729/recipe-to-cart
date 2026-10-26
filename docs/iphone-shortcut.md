@@ -43,8 +43,9 @@ else can add or read recipes.
 ## 2. Connect Chrome (on your PC, 1 minute)
 
 1. Update the extension to this version and click its reload arrow in `chrome://extensions`.
-2. Right-click the **Recipe to Cart** toolbar button and choose **Options**. The page
-   **Recipes from your phone** opens.
+2. Open any Recipe to Cart page (click the toolbar button) and click the **gear** at the top
+   right. **Settings** opens. (Right-clicking the toolbar button and choosing **Options** works
+   too.)
 3. Paste the **Web app URL** and the **token**. Click **Test connection**; it should say
    "Connected".
 4. Choose what happens when a recipe arrives: **wait for me to review it** (recommended) or
@@ -113,13 +114,14 @@ first link it finds.
 On your PC, whenever Chrome is open, the extension checks the inbox when Chrome starts and every
 5 minutes:
 
-- **Review mode** (default): the toolbar button shows a number. Click it (from any page that isn't
-  a recipe) to open **Recipes from your phone**, tick the ones you want, and click **Shop for
-  checked recipes**. That opens the usual cart list to check and add.
+- **Review mode** (default): the recipe shows up on the **Recipes** page, already ticked and
+  tagged **New from your iPhone**, and the toolbar button shows a number. Click the button (from
+  any page that isn't a recipe) to open Recipes, then click **Shop for N recipes**. That opens the
+  usual shopping list to check and add.
 - **Auto mode**: the cart list opens in a background tab and adds everything by itself, then opens
   your Walmart cart. Nothing is ever purchased.
 
-Want it now instead of within 5 minutes? Open **Recipes from your phone** and click **Check now**.
+Want it now instead of within 5 minutes? Click the gear for **Settings**, then **Check now**.
 
 Every link stays in the Google Sheet with its status (`waiting` or `picked up`), so you have a
 history and can delete old rows whenever you like.
@@ -149,7 +151,7 @@ stay the same, so nothing changes on your phone or in Chrome.
   **Anyone**. Use the URL ending in `/exec` from **Deploy → Manage deployments**.
 - **"The inbox token doesn't match"**: copy the token again from the Apps Script execution log
   (run `setup`).
-- **A recipe shows "couldn't read" on the phone page**: some sites block automatic reading. Click
-  **page**, then the Recipe to Cart toolbar button on that page.
+- **A recipe shows "couldn't read" on the Recipes page**: some sites block automatic reading.
+  Click **Open recipe**, then the Recipe to Cart toolbar button on that page.
 - **Nothing arrives**: open the Google Sheet. If the row isn't there, the shortcut didn't send it
   (check its URL and token). If it says `waiting`, Chrome hasn't checked yet; click **Check now**.

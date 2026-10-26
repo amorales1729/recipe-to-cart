@@ -15,8 +15,9 @@
       </a>
       <nav class="tabs" aria-label="Main">
         <a href="app.html" aria-current="page">Recipes</a>
-        <a href="phone.html">Phone setup</a>
+        <a href="cart.html">Shopping list</a>
       </nav>
+      <a class="gear" href="settings.html" aria-label="Settings" title="Settings"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></a>
     </div>
   </header>
 
@@ -24,7 +25,7 @@
     <div class="page-head">
       <div>
         <h1>Your recipes</h1>
-        <p class="muted">Pick the ones you're cooking. Their ingredients become one shopping list. To add a recipe, click the Recipe to Cart button in Chrome's toolbar on any recipe page.</p>
+        <p class="muted">Pick the ones you're cooking. Their ingredients become one shopping list. To add one, click the Recipe to Cart button in Chrome's toolbar on a recipe page, or share it from your iPhone.</p>
       </div>
       <div class="actions" style="margin-top: 0">
         <span id="picked" class="muted small"></span>
@@ -34,31 +35,8 @@
 
     <section id="status" class="card" role="status" hidden></section>
 
-    <p id="empty" class="empty muted" hidden>No recipes yet. Open a recipe page and click the Recipe to Cart button, or paste one below.</p>
+    <p id="empty" class="empty muted" hidden>No recipes yet. Open a recipe page and click the Recipe to Cart button, or share one from your iPhone.</p>
     <ul id="recipe-list" class="recipe-grid"></ul>
-
-    <div class="grid-2">
-      <section class="card">
-        <h2>Paste a recipe</h2>
-        <p class="muted small">From Apple Notes, a text, or a site the button can't read. Put the ingredients under a line that says "Ingredients".</p>
-        <label for="paste-title">Title</label>
-        <input id="paste-title" type="text" placeholder="Optional">
-        <label for="paste-text" style="display: block; margin-top: 12px">Recipe text</label>
-        <textarea id="paste-text" rows="7" placeholder="Ingredients&#10;2 cups heavy cream&#10;1 onion, diced&#10;&#10;Instructions&#10;1. ..."></textarea>
-        <div class="actions"><button id="paste-save" class="ghost">Save recipe</button></div>
-      </section>
-
-      <section class="card" id="pantry">
-        <h2>Pantry staples</h2>
-        <p class="muted small">Left out of the cart. They still show at the bottom of your shopping list with an Add to cart button. Salt and black pepper are never listed.</p>
-        <ul id="pantry-list" class="chips"></ul>
-        <form id="pantry-form">
-          <label for="pantry-add" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Add a staple</label>
-          <input id="pantry-add" type="text" placeholder="Add a staple, like butter">
-          <button class="ghost" type="submit">Add</button>
-        </form>
-      </section>
-    </div>
   </main>
 
   <script type="module" src="app.js"></script>

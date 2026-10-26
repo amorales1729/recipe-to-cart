@@ -16,8 +16,8 @@
       <nav class="tabs" aria-label="Main">
         <a href="app.html">Recipes</a>
         <a href="cart.html" aria-current="page">Shopping list</a>
-        <a href="phone.html">Phone setup</a>
       </nav>
+      <a class="gear" href="settings.html" aria-label="Settings" title="Settings"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></a>
     </div>
   </header>
 
@@ -25,7 +25,7 @@
     <div class="page-head">
       <div>
         <h1>Your shopping list</h1>
-        <div class="actions" style="margin-top: 0">
+        <div id="for-line" class="actions" style="margin-top: 0" hidden>
           <span class="muted">For</span>
           <span id="recipes" class="actions" style="margin-top: 0; gap: 8px"></span>
           <a href="app.html" class="small">+ Add a recipe</a>
@@ -35,7 +35,14 @@
 
     <section id="status" class="card" role="status"></section>
 
-    <div class="layout">
+    <section id="empty-list" class="empty" hidden>
+      <div class="art"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6L5 3H2"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg></div>
+      <h2>Your shopping list is empty</h2>
+      <p class="muted">Pick the recipes you're cooking on the Recipes page, or click the Recipe to Cart button on a recipe page.</p>
+      <div class="actions" style="justify-content: center"><a class="primary" href="app.html">Pick recipes</a></div>
+    </section>
+
+    <div id="list-area" class="layout" hidden>
       <div class="main-col">
         <div id="rows" class="main-col" style="flex-basis: auto"></div>
 
@@ -44,7 +51,7 @@
           <p class="muted small">These aren't in the cart. If you're running low on one, add it here.</p>
           <div class="kitchen-grid">
             <div id="pantry" hidden>
-              <h3>Pantry staples <a class="small" href="app.html#pantry" style="text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 6px">Edit</a></h3>
+              <h3>Pantry staples</h3>
               <ul id="pantry-items" class="left-off"></ul>
             </div>
             <div id="spices" hidden>
@@ -56,12 +63,13 @@
       </div>
 
       <aside class="side">
-        <section id="list" class="card summary" hidden>
+        <section id="list" class="card summary">
           <h2 style="margin-bottom: 12px">Summary</h2>
           <div class="line"><span>Items</span><span id="count">0</span></div>
           <div class="line"><span>Added from your kitchen</span><span id="extra-count">0</span></div>
           <div class="line total"><span>Estimated total</span><span id="total">$0.00</span></div>
           <button id="add" class="primary wide" disabled>Add to Walmart cart</button>
+          <div id="progress" class="progress"></div>
           <p class="note">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
             <span>Nothing is ever bought. This only fills your Walmart cart; you check out yourself.</span>

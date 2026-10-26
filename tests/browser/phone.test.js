@@ -1,5 +1,5 @@
 // Recipes sent from the phone: the extension picks them up from a fake Google inbox,
-// reads each recipe, shows a badge, and (in auto mode) opens the cart on its own.
+// reads each recipe onto the Recipes page, shows a badge, and (in auto mode) opens the cart on its own.
 // Opt in with RTC_E2E=1, like extension.test.js.
 import assert from "node:assert/strict";
 import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -93,7 +93,7 @@ test("recipes from the phone are picked up and wait for review, or fill the cart
 
     // Set up through the settings page; a wrong token is reported.
     const phone = await ctx.newPage();
-    await phone.goto(`chrome-extension://${extId}/phone.html`);
+    await phone.goto(`chrome-extension://${extId}/settings.html`);
     await phone.fill("#inbox-url", `${net.base}/exec`);
     await phone.fill("#token", "wrong");
     await phone.click("#test");
@@ -122,10 +122,26 @@ test("recipes from the phone are picked up and wait for review, or fill the cart
     // Polling again doesn't add it twice.
     assert.equal((await worker.evaluate(() => globalThis.pollPhoneInbox())).added.length, 0);
 
-    // It shows on the phone page; shopping opens the cart page for it and clears the badge.
-    assert.ok(await until(async () => /Italian Chicken Soup/.test(await phone.innerText("#waiting")), 5));
+    // It shows on the Recipes page, new and already picked; shopping opens the list for it and clears the badge.
+    await phone.goto(`chrome-extension://${extId}/app.html`);
+    const card = phone.locator("#recipe-list .recipe-card", { hasText: "Italian Chicken Soup" });
+    assert.ok(await until(async () => /New from your iPhone/.test(await card.innerText()), 5));
+    assert.equal(await card.locator("input[type=checkbox]").isChecked(), true);
+    assert.equal(await phone.innerText("#shop"), "Shop for 1 recipe");
+
+    // A link that can't be read waits on the same page with what went wrong, and can be removed.
+    net.send("c3", "/nope");
+    await worker.evaluate(() => globalThis.pollPhoneInbox());
+    const broken = phone.locator("#recipe-list .recipe-card.waiting");
+    assert.ok(await until(async () => (await broken.count()) === 1 && /couldn't|no recipe|find/i.test(await broken.innerText()), 10),
+      await phone.innerText("#recipe-list"));
+    assert.equal(await badge(), "2");
+    await broken.locator(".remove").click();
+    assert.ok(await until(async () => (await broken.count()) === 0, 5));
+
     await phone.click("#shop");
-    assert.ok(await until(() => phone.url().includes(`cart.html?recipes=${saved.recipes[0].id}`), 5), phone.url());
+    assert.ok(await until(() => phone.url().includes("cart.html"), 5), phone.url());
+    assert.ok(await until(async () => (await storage()).shoppingList?.recipeIds?.join() === saved.recipes[0].id, 5));
     assert.ok(await until(async () => (await badge()) === "", 5));
     assert.equal((await storage()).phoneInbox.length, 0);
 
@@ -134,8 +150,10 @@ test("recipes from the phone are picked up and wait for review, or fill the cart
       chrome.storage.local.set({ phoneSettings: { ...phoneSettings, mode: "auto" } })));
     net.send("b2", "/recipe/other-soup");
     await worker.evaluate(() => globalThis.pollPhoneInbox());
-    assert.ok(await until(() => ctx.pages().some((p) => /cart\.html\?recipes=r\d+&auto=1$/.test(p.url())), 10),
-      ctx.pages().map((p) => p.url()).join("\n"));
+    assert.ok(await until(async () => {
+      const list = (await storage()).shoppingList;
+      return list && list.recipeIds.length === 1 && list.recipeIds[0] !== saved.recipes[0].id;
+    }, 10), ctx.pages().map((p) => p.url()).join("\n"));
     saved = await storage();
     assert.equal(saved.phoneInbox.length, 0);
     assert.equal(saved.recipes.length, 2);

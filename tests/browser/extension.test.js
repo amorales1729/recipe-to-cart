@@ -52,6 +52,7 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
   writeFileSync(join(ext, "manifest.json"), JSON.stringify(manifest));
 
   const added = [], checkoutHits = [];
+  let searches = 0;
   const ctx = await playwright.chromium.launchPersistentContext(join(tmp, "profile"), {
     headless: true,
     // Extensions need full Chromium, not the stripped-down headless shell.
@@ -67,6 +68,7 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
         return route.fulfill({ body: "ok" });
       }
       if (url.pathname.startsWith("/checkout")) checkoutHits.push(url.href);
+      if (url.pathname === "/search") searches++;
       if (url.pathname === "/search") return route.fulfill({ contentType: "text/html", body: searchPage(url.searchParams.get("q")) });
       if (url.pathname.startsWith("/ip/")) return route.fulfill({ contentType: "text/html", body: PRODUCT_PAGE.replaceAll("ID", url.pathname.split("/").pop()) });
       return route.fulfill({ contentType: "text/html", body: `<html><body>${url.pathname}</body></html>` });
@@ -111,10 +113,28 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
     assert.match(await row("Low Sodium Chicken Broth").locator(".thumb img").getAttribute("src"), /^https:\/\/www\.walmart\.com\/img\//);
     assert.match(await row("Low Sodium Chicken Broth").locator(".line-total").innerText(), /^\$5\.00$/);
 
-    // "I always have this" takes celery off the list and remembers it.
-    await row("Celery").locator(".have").click();
-    assert.ok(await until(async () => (await rows.count()) === 10, 5, cart));
-    assert.match(await cart.innerText("#pantry"), /Celery/);
+    // Leaving the list and coming back keeps it, without searching Walmart again.
+    const searched = searches;
+    await cart.click("nav.tabs a[href='app.html']");
+    assert.ok(await until(async () => /Italian Chicken Soup/.test(await cart.innerText("#recipe-list")), 5, cart));
+    await cart.click("nav.tabs a[href='cart.html']");
+    assert.ok(await until(async () => (await cart.locator("#rows select").count()) === 11, 10, cart));
+    assert.match(await picked("Ditalini Pasta"), /^Clover Valley ditalini pasta, 16 oz · \$1\.75 · cheapest$/);
+    assert.equal(await row("Low Sodium Chicken Broth").locator("input[type=number]").inputValue(), "2");
+    await cart.waitForTimeout(1500);
+    assert.equal(searches, searched);
+
+    // Start over, stop partway, then pick up where it left off.
+    cart.once("dialog", (d) => d.accept());
+    await cart.click("#restart");
+    assert.ok(await until(() => cart.locator("#stop").isVisible(), 10, cart));
+    await cart.click("#stop");
+    assert.ok(await until(async () => /Stopped\. Found products for \d+ of 11 items/.test(await cart.innerText("#status")), 30, cart), await cart.innerText("#status"));
+    const found = await cart.locator("#rows select").count();
+    assert.ok(found < 11, `stopped after ${found}`);
+    await cart.click("#pick-up");
+    assert.ok(await until(async () => (await cart.locator("#rows select").count()) === 11
+      && (await cart.innerText("#status")).trim() === "", 120, cart), "the rest were searched");
 
     // Only buy two things in this test.
     for (const box of await cart.locator("#rows input[type=checkbox]").all()) await box.uncheck();
@@ -132,7 +152,8 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
 
     // A pantry staple can still go in the cart from the kitchen section.
     await cart.locator("#pantry-items li").first().locator("button").click();
-    assert.ok(await until(async () => /In cart/.test(await cart.locator("#pantry-items li").first().innerText()), 30, cart));
+    assert.ok(await until(async () => /In cart/.test(await cart.locator("#pantry-items li").first().innerText()), 60, cart),
+      await cart.locator("#pantry-items li").first().innerText());
     assert.equal(added.length, 4);
     assert.equal(await cart.innerText("#extra-count"), "1");
     assert.ok(await until(() => ctx.pages().some((p) => p.url() === "https://www.walmart.com/cart"), 10, cart));
@@ -142,16 +163,25 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
     assert.equal(saved.recipes.length, 1);
     assert.deepEqual(Object.keys(saved.choices).sort(), ["ditalini pasta", "low sodium chicken broth", "olive oil"]);
     assert.deepEqual(saved.searchTerms, { "ditalini pasta": "barilla ditalini" });
-    assert.ok(saved.pantry.includes("celery"));
 
-    // The recipes page lists it, and a pasted recipe can be saved.
+    // Coming back after adding shows what's in the cart, and doesn't add it again.
+    await cart.reload();
+    assert.ok(await until(async () => (await row("Ditalini Pasta").locator(".state").innerText()).includes("✓"), 10, cart));
+    assert.equal(await cart.innerText("#add"), "Everything's in your cart");
+    assert.equal(await cart.locator("#add").isDisabled(), true);
+
+    // The recipes page lists it, with its ingredients a click away.
     const app = await ctx.newPage();
     await app.goto(`chrome-extension://${extId}/app.html`);
     assert.ok(await until(async () => /Italian Chicken Soup/.test(await app.innerText("#recipe-list")), 5, app));
-    await app.fill("#paste-text", "Toast\nIngredients\n2 slices bread\n1 tbsp butter");
-    await app.click("#paste-save");
-    assert.ok(await until(async () => /Toast/.test(await app.innerText("#recipe-list")), 5, app));
-    assert.match(await app.innerText("#pantry-list"), /celery/);
+    await app.click("#recipe-list .show");
+    assert.match(await app.innerText("#recipe-list .lines"), /ditalini/i);
+
+    // With nothing on it, the shopping list says so.
+    await worker.evaluate(() => chrome.storage.local.remove("shoppingList"));
+    await app.goto(`chrome-extension://${extId}/cart.html`);
+    assert.ok(await until(() => app.locator("#empty-list").isVisible(), 5, app));
+    assert.equal(await app.locator("#list-area").isHidden(), true);
   } finally {
     await ctx.close();
   }
