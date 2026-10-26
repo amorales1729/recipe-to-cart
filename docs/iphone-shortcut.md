@@ -56,22 +56,31 @@ else can add or read recipes.
 
 ## 3. Make the shortcut (on your iPhone, about 4 minutes)
 
-1. Open the **Shortcuts** app and tap **+** to make a new shortcut. Name it
-   **Send to Recipe to Cart**.
-2. Tap the **ⓘ** (or the shortcut's name → Details) and turn on **Show in Share Sheet**. Back in the
-   editor, the first block says "Receive **Any** input from **Share Sheet**". Tap **Any** and
-   leave only **URLs**, **Safari web pages** and **Text** turned on.
-3. Add the action **Get Contents of URL**.
-   - URL: paste your **Web app URL**.
-   - Tap the arrow to show more: **Method** POST, **Request Body** JSON.
-   - Add three **Text** fields:
-     - `action` = `add`
-     - `token` = your token
-     - `url` = tap the field, then choose the **Shortcut Input** variable
-4. Add **Get Dictionary Value**: get **Value** for key `message` in **Contents of URL**.
-5. Add **Show Notification** and set its text to the **Dictionary Value** variable. It says
-   "Sent to Recipe to Cart", or what went wrong (for example "Couldn't send: bad token").
-6. Tap **Done**.
+Everything here is on the iPhone. First get the **Web app URL** and **token** onto your phone
+(email or text them to yourself) so you can copy and paste them.
+
+1. Open the **Shortcuts** app, tap **+**, and name the shortcut **Send to Recipe to Cart**.
+2. At the bottom, tap **Search for actions**, type `get contents`, and tap **Get Contents of URL**.
+3. In that action, tap the blue word **URL** and paste your Web app URL.
+4. Tap the small **›** arrow on the right of the action to show more options.
+   - Change **Method** from GET to **POST**.
+   - Set **Request Body** to **JSON**.
+   - Tap **Add new field → Text**: key `action`, text `add`.
+   - Tap **Add new field → Text**: key `token`, text your token.
+   - Tap **Add new field → Text**: key `url`. Tap its empty text box, then tap **Shortcut Input**
+     in the bar above the keyboard.
+5. A block appears at the top: "Receive **Any** input from **Nowhere**".
+   - Tap **Nowhere**, turn on **Share Sheet**, and tap **Done**.
+   - Tap **Any**, leave only **URLs**, **Safari web pages** and **Text** on, and tap **Done**.
+
+   (On some iOS versions this is instead under the **ⓘ** button or the shortcut's name →
+   **Details** → **Show in Share Sheet**.)
+6. Search for actions again, type `dictionary value`, and tap **Get Dictionary Value**. Tap the
+   blue word **Key** and type `message`. It reads "Get Value for message in Contents of URL".
+7. Search for `notification` and tap **Show Notification**. Delete "Hello World!" and tap
+   **Dictionary Value** in the bar above the keyboard. The notification then says "Sent to Recipe
+   to Cart", or what went wrong (for example "Couldn't send: bad token").
+8. Tap **Done**.
 
 ## Use it
 
@@ -101,6 +110,11 @@ stay the same, so nothing changes on your phone or in Chrome.
 
 ## If something goes wrong
 
+- **Test connection says "answered 401"** (or 403): **Who has access** isn't exactly **Anyone**.
+  "Anyone with a Google account" needs a sign-in the extension doesn't send. Fix it under
+  **Deploy → Manage deployments → ✎ → Who has access: Anyone → Version: New version → Deploy**.
+  Also check the URL ends in `/exec`, not `/dev`. To check by hand, open
+  `<your URL>?action=list&token=<your token>` in an incognito window; it should show `{"ok":true,...}`.
 - **Test connection says "didn't answer with data"**: the URL is wrong or "Who has access" isn't
   **Anyone**. Use the URL ending in `/exec` from **Deploy → Manage deployments**.
 - **"The inbox token doesn't match"**: copy the token again from the Apps Script execution log
