@@ -82,6 +82,28 @@ Everything here is on the iPhone. First get the **Web app URL** and **token** on
    to Cart", or what went wrong (for example "Couldn't send: bad token").
 8. Tap **Done**.
 
+### Optional: keep a list in Apple Notes
+
+The shortcut can also add each recipe's name and link to a note called **Recipe to Cart**, so you
+have a running list on your phone. It sends the name to the inbox too, so the Chrome page shows it
+right away.
+
+1. In **Notes**, make a new note whose first line is `Recipe to Cart`.
+2. In the shortcut, search for `safari` and add **Get Details of Safari Web Page**. Change the blue
+   word to **Name** so it reads "Get Name from Shortcut Input", then drag it to the top, just under
+   the "Receive" block.
+3. In **Get Contents of URL**, add one more **Text** field: key `title`, and for the value tap
+   **Name** above the keyboard.
+4. At the bottom, add a **Text** action containing
+   `<ul><li>` **Name** ` – ` **Shortcut Input** `</li></ul>` (tap **Name** and **Shortcut Input**
+   above the keyboard). The HTML makes each recipe a real bullet in Notes.
+5. Add **Make Rich Text from HTML**, then **Append to Note**. In Append to Note, pick
+   **Recipe to Cart** as the note and **Rich Text from HTML** as the text.
+6. Tap **Done**. The first time it runs, allow the shortcut to use Notes.
+
+Shared from Safari, you get the page's title. Some apps don't share a title, and then the line is
+just the link.
+
 ## Use it
 
 On your iPhone, open a recipe in Safari (or Instagram, Pinterest, a recipe app...), tap **Share**,
