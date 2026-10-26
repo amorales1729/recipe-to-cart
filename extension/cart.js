@@ -142,7 +142,7 @@ const EXTERNAL = icon(`<path d="M14 4h6v6"/><path d="M10 14L20 4"/><path d="M19 
 const PLUS = icon(`<path d="M12 5v14M5 12h14"/>`, 14);
 
 function render() {
-  $("recipes").innerHTML = plan.recipes.map((t) => `<span class="pill">${escapeHtml(t)}</span>`).join("");
+  $("recipes").innerHTML = plan.recipes.map((t) => recipeTag(t, "pill")).join("");
   $("for-line").hidden = false;
   $("empty-list").hidden = true;
   $("list-area").hidden = false;
@@ -181,6 +181,12 @@ function showEmpty() {
   setStatus("");
 }
 
+// Each recipe keeps one color, on its pill at the top and on the tag of every item it needs.
+function recipeTag(title, cls = "tag") {
+  const n = Math.max(0, plan.recipes.indexOf(title)) % 6;
+  return `<span class="${cls} recipe-${n}">${escapeHtml(title)}</span>`;
+}
+
 function itemRow(item) {
   const el = document.createElement("div");
   el.className = "item";
@@ -190,11 +196,10 @@ function itemRow(item) {
     <div class="thumb">${PHOTO}</div>
     <div class="info">
       <div><span class="ing query">${escapeHtml(item.query)}</span><span class="need">${item.amount === "as needed" ? "As needed" : `Need ${escapeHtml(item.amount)}`}</span></div>
-      <div class="from">(${escapeHtml(item.name)}) · ${escapeHtml(item.sources.join(", "))}</div>
+      <div class="from">(${escapeHtml(item.name)})</div>
       <div class="product"><span class="muted small">Not searched yet</span></div>
       <div class="meta">
-        <span class="tags"></span>
-        <span class="tag by" ${item.querySource === "suggested" ? "" : "hidden"}>Suggested search</span>
+        <span class="tags">${item.sources.map((t) => recipeTag(t)).join("")}</span>
         <button class="chip-btn change">${SEARCH}Change search</button>
       </div>
     </div>
@@ -255,8 +260,6 @@ function showOptions(row, saved = null) {
     qty.value = o.qty;
     const thumb = row.el.querySelector(".thumb");
     thumb.innerHTML = o.image ? `<img src="${escapeHtml(o.image)}" alt="" style="width: 100%; height: 100%; object-fit: contain">` : PHOTO;
-    const tags = [o.cheapest && `<span class="tag green">Cheapest</span>`, o.usual && `<span class="tag blue">Your usual</span>`];
-    row.el.querySelector(".tags").innerHTML = tags.filter(Boolean).join(" ");
   };
   select.addEventListener("change", () => { apply(); changed(); });
   cell.innerHTML = "";
@@ -299,15 +302,15 @@ function updateTotal() {
   for (const row of rows.values()) {
     const o = selected(row);
     const n = Number(row.el.querySelector("input[type=number]").value || 0);
-    const line = o ? (o.price || 0) * n : 0;
-    row.el.querySelector(".line-total").textContent = o ? money(line) : "";
+    const line = o && o.price > 0 ? o.price * n : null;
+    row.el.querySelector(".line-total").textContent = !o ? "" : line === null ? "No price" : money(line);
     row.el.querySelector(".each").textContent = o && n > 1 ? `${money(o.price)} each` : "";
     if (!included(row)) continue;
     count++;
     if (!settled(row)) toAdd++;
-    total += line;
+    total += line || 0;
     const s = bySection.get(row.item.aisle) || { count: 0, total: 0 };
-    bySection.set(row.item.aisle, { count: s.count + 1, total: s.total + line });
+    bySection.set(row.item.aisle, { count: s.count + 1, total: s.total + (line || 0) });
   }
   for (const section of document.querySelectorAll(".aisle")) {
     const s = bySection.get(section.dataset.aisle) || { count: 0, total: 0 };
@@ -456,10 +459,7 @@ function searchRow(row, typedQuery = null) {
     const query = typedQuery || row.item.query;
     const url = searchUrl(query);
     row.item.query = query; // products are ranked against what was searched
-    if (typedQuery) {
-      row.item.querySource = "you";
-      row.el.querySelector(".by").hidden = true;
-    }
+    if (typedQuery) row.item.querySource = "you";
     row.item.searchUrl = url;
     row.el.querySelector(".product").innerHTML = `<span class="muted small">Finding…</span>`;
     row.el.querySelector(".state").textContent = "";
