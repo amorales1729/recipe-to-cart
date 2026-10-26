@@ -13,11 +13,22 @@
  *   action=add   url=<recipe link or shared text containing one>  title=<optional>
  *   action=list  -> waiting recipes
  *   action=ack   ids=<comma-separated ids>  -> marks them picked up
+ *
+ * Walmart search words, on the "Search words" tab. The extension sends ingredients it hasn't
+ * seen, a scheduled task suggests a better Walmart search for each, and the extension
+ * uses them from then on. You can edit the "walmart search" column yourself too.
+ *   action=ask      words=<JSON list of {key, name, guess}>  -> adds the ones not on the tab yet
+ *   action=pending  -> ingredients still waiting for a search
+ *   action=answer   words=<JSON object {key: search}>  -> fills in searches
+ *   action=words    -> every ingredient that has a search, as {key: search}
  */
 
 var SHEET_NAME = "Inbox";
 var HEADERS = ["id", "added", "url", "title", "status", "picked up"];
 var MAX_LIST = 50;
+var WORDS_SHEET = "Search words";
+var WORDS_HEADERS = ["ingredient", "as written", "rules search", "walmart search", "updated"];
+var MAX_WORDS = 200;
 
 // Run once from the Apps Script editor. Creates the sheet and your secret token.
 function setup() {
@@ -65,6 +76,10 @@ function handle_(params) {
     if (action === "add") return json_(add_(params));
     if (action === "list") return json_({ ok: true, recipes: list_() });
     if (action === "ack") return json_(ack_(String(params.ids || "").split(",")));
+    if (action === "ask") return json_(ask_(parseJson_(params.words, null)));
+    if (action === "pending") return json_({ ok: true, words: pending_() });
+    if (action === "answer") return json_(answer_(parseJson_(params.words, null)));
+    if (action === "words") return json_({ ok: true, words: words_() });
     return json_({ ok: false, error: "unknown action" });
   } finally {
     lock.releaseLock();
@@ -110,6 +125,86 @@ function ack_(ids) {
     }
   }
   return { ok: true, acked: done };
+}
+
+// ---- Walmart search words ----
+
+function ask_(list) {
+  if (!Array.isArray(list)) return { ok: false, error: "words should be a list" };
+  var sheet = wordsSheet_();
+  var rows = sheet.getDataRange().getValues();
+  var known = {};
+  for (var i = 1; i < rows.length; i++) known[String(rows[i][0])] = true;
+  var added = 0;
+  list.slice(0, MAX_WORDS).forEach(function (w) {
+    var key = clean_(w && w.key, 100).toLowerCase();
+    if (!key || known[key]) return;
+    known[key] = true;
+    sheet.appendRow([key, clean_(w.name, 200), clean_(w.guess, 200), "", ""]);
+    added++;
+  });
+  return { ok: true, added: added };
+}
+
+function pending_() {
+  var rows = wordsSheet_().getDataRange().getValues();
+  var out = [];
+  for (var i = 1; i < rows.length && out.length < MAX_WORDS; i++) {
+    if (rows[i][0] && !String(rows[i][3]).trim()) out.push({ key: String(rows[i][0]), name: String(rows[i][1]), guess: String(rows[i][2]) });
+  }
+  return out;
+}
+
+function answer_(words) {
+  if (!words || typeof words !== "object" || Array.isArray(words)) return { ok: false, error: "words should be {ingredient: search}" };
+  var sheet = wordsSheet_();
+  var rows = sheet.getDataRange().getValues();
+  var now = new Date();
+  var done = 0;
+  for (var i = 1; i < rows.length; i++) {
+    var search = clean_(words[String(rows[i][0])], 100);
+    if (search) {
+      sheet.getRange(i + 1, 4, 1, 2).setValues([[search, now]]);
+      done++;
+    }
+  }
+  return { ok: true, answered: done };
+}
+
+function words_() {
+  var rows = wordsSheet_().getDataRange().getValues();
+  var out = {};
+  for (var i = 1; i < rows.length; i++) {
+    var search = String(rows[i][3]).trim();
+    if (rows[i][0] && search) out[String(rows[i][0])] = search;
+  }
+  return out;
+}
+
+function wordsSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(WORDS_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(WORDS_SHEET);
+    sheet.appendRow(WORDS_HEADERS);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+// Lists and objects arrive as JSON text in a GET, or already parsed in a POST body.
+function parseJson_(value, fallback) {
+  if (value && typeof value === "object") return value;
+  try {
+    return JSON.parse(String(value || ""));
+  } catch (err) {
+    return fallback;
+  }
+}
+
+function clean_(value, max) {
+  // A leading = + - @ would turn the cell into a formula.
+  return String(value == null ? "" : value).replace(/\s+/g, " ").trim().replace(/^[=+\-@]+/, "").slice(0, max);
 }
 
 // Shared text from some apps wraps the link in words ("Check out this recipe! https://...").

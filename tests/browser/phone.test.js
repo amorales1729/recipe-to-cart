@@ -81,6 +81,8 @@ test("recipes from the phone are picked up and wait for review, or fill the cart
     await ctx.route("https://www.walmart.com/**", (route) => route.fulfill({ contentType: "text/html", body: "<html><body></body></html>" }));
     let [worker] = ctx.serviceWorkers();
     worker = worker || (await ctx.waitForEvent("serviceworker"));
+    // The worker can be found before background.js has finished running.
+    assert.ok(await until(() => worker.evaluate(() => typeof globalThis.pollPhoneInbox === "function").catch(() => false), 10));
     const extId = worker.url().split("/")[2];
     const storage = () => worker.evaluate(() => chrome.storage.local.get(null));
     const badge = () => worker.evaluate(() => chrome.action.getBadgeText({}));

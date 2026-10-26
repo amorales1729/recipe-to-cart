@@ -92,6 +92,16 @@ test("plan: shopping list, pantry line, spice list, your own searches", () => {
   assert.deepEqual(plan.spices, [{ name: "chili powder", amount: "2 tsp" }]);
 });
 
+test("plan: your searches win, then suggested ones, then the rules", () => {
+  const recipes = [{ title: "Soup", lines: ["1 onion", "1 whole Cut Up Fryer Chicken", "2 c. Heavy Cream"] }];
+  const plan = buildPlan(recipes, [], { onion: "white onion" }, { onion: "sweet onion", "cut up fryer chicken": "whole fryer chicken cut up" });
+  assert.deepEqual(plan.items.map((i) => [i.query, i.querySource]), [
+    ["white onion", "you"],
+    ["whole fryer chicken cut up", "suggested"],
+    ["heavy whipping cream", "rules"],
+  ]);
+});
+
 test("checkout is always blocked", () => {
   for (const url of ["https://www.walmart.com/checkout", "https://www.walmart.com/checkout/review-order?x=1",
     "https://www.walmart.com/payment", "https://www.walmart.com/place-order"]) assert.ok(isBlockedUrl(url), url);

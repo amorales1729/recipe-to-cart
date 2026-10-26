@@ -9,8 +9,11 @@ import { STORE_BRANDS, searchUrl } from "./walmart.js";
 
 export const MAX_OPTIONS = 5;
 
-/** recipes: saved recipes {title, lines}. searchTerms: {ingredient key: your own search}. */
-export function buildPlan(recipes, pantry, searchTerms = {}) {
+/**
+ * recipes: saved recipes {title, lines}. searchTerms: {ingredient key: your own search}.
+ * suggestedWords: {ingredient key: suggested search}. Yours win, then the suggestions, then the rules.
+ */
+export function buildPlan(recipes, pantry, searchTerms = {}, suggestedWords = {}) {
   const parsed = recipes.map((r) => ({ title: r.title, ingredients: parseLines(r.lines) }));
   const all = buildGroceryList(parsed, pantry);
   const items = [], pantrySkipped = [], spices = [];
@@ -18,8 +21,10 @@ export function buildPlan(recipes, pantry, searchTerms = {}) {
     if (item.category === "spice") spices.push({ name: item.name, amount: amountText(item) });
     else if (item.skipReason) pantrySkipped.push(item.name);
     else {
-      const query = searchTerms[item.key] || searchQuery(item.name, item.unit);
-      items.push({ ...item, amount: amountText(item), query, searchUrl: searchUrl(query) });
+      const [query, querySource] = searchTerms[item.key] ? [searchTerms[item.key], "you"]
+        : suggestedWords[item.key] ? [suggestedWords[item.key], "suggested"]
+        : [searchQuery(item.name, item.unit), "rules"];
+      items.push({ ...item, amount: amountText(item), query, querySource, searchUrl: searchUrl(query) });
     }
   }
   return { recipes: recipes.map((r) => r.title), items, pantrySkipped, spices };

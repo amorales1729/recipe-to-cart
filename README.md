@@ -51,6 +51,9 @@ your PC. The extension checks when Chrome starts and every 5 minutes, then eithe
 its button for you to review (the default) or fills your Walmart cart right away, if you choose.
 Still free, still never checks out. One-time setup: [docs/iphone-shortcut.md](docs/iphone-shortcut.md).
 
+The same Sheet has a **Search words** tab. New ingredients land there with the search the rules
+came up with, and a scheduled task suggests better Walmart wording that the extension picks up.
+
 ## What goes on the list
 
 - **Salt and black pepper** are never listed. Fresh peppers (bell, jalapeno) are groceries.

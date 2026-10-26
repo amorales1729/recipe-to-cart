@@ -1,53 +1,7 @@
 // The Google Apps Script inbox (apps-script/Code.gs), run against a fake Google Sheet.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import vm from "node:vm";
-
-const CODE = readFileSync(new URL("../../apps-script/Code.gs", import.meta.url), "utf8");
-
-function fakeGoogle() {
-  const props = {};
-  let uuid = 0;
-  const sheets = {};
-  const makeSheet = () => {
-    const rows = [];
-    return {
-      rows,
-      appendRow: (r) => rows.push([...r]),
-      setFrozenRows: () => {},
-      getDataRange: () => ({ getValues: () => rows.map((r) => [...r]) }),
-      getRange: (row, col, _n, width) => ({
-        setValues: ([vals]) => { for (let i = 0; i < width; i++) rows[row - 1][col - 1 + i] = vals[i]; },
-      }),
-    };
-  };
-  const ctx = {
-    SpreadsheetApp: {
-      getActiveSpreadsheet: () => ({
-        getSheetByName: (n) => sheets[n] || null,
-        insertSheet: (n) => (sheets[n] = makeSheet()),
-      }),
-    },
-    PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => props[k] ?? null, setProperty: (k, v) => { props[k] = v; } }) },
-    Utilities: { getUuid: () => `0000-${++uuid}` },
-    LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
-    ContentService: {
-      MimeType: { JSON: "json" },
-      createTextOutput: (text) => ({ text, setMimeType() { return this; } }),
-    },
-    Logger: { log() {} },
-  };
-  vm.createContext(ctx);
-  vm.runInContext(CODE, ctx);
-  const out = (res) => JSON.parse(res.text);
-  return {
-    ctx,
-    sheets,
-    get: (parameter) => out(ctx.doGet({ parameter })),
-    post: (body, parameter = {}) => out(ctx.doPost({ parameter, postData: { contents: typeof body === "string" ? body : JSON.stringify(body) } })),
-  };
-}
+import { fakeGoogle } from "./fake_google.js";
 
 test("adds, lists and acknowledges recipes with the right token", () => {
   const g = fakeGoogle();
@@ -88,4 +42,32 @@ test("a plain-text POST body is treated as the shared link", () => {
 test("refuses everything before setup has made a token", () => {
   const g = fakeGoogle();
   assert.equal(g.get({ action: "list", token: "" }).error, "bad token");
+});
+
+test("search words: the extension asks, the task answers, the extension reads them", () => {
+  const g = fakeGoogle();
+  const token = g.ctx.setup();
+  const words = [
+    { key: "cut up fryer chicken", name: "Cut Up Fryer Chicken", guess: "whole chicken cut up" },
+    { key: "ditalini pasta", name: "Ditalini Pasta", guess: "ditalini pasta" },
+  ];
+  // A POST body arrives parsed; asking twice doesn't add the same ingredient again.
+  assert.deepEqual(g.post({ action: "ask", token, words }), { ok: true, added: 2, message: "Sent to Recipe to Cart" });
+  assert.equal(g.post({ action: "ask", token, words }).added, 0);
+  // A GET sends the list as JSON text. Leading = can't sneak a formula into the sheet.
+  assert.equal(g.get({ action: "ask", token, words: JSON.stringify([{ key: "Lemon", name: "=HYPERLINK(1)", guess: "lemon" }]) }).added, 1);
+  assert.deepEqual(g.sheets["Search words"].rows[3], ["lemon", "HYPERLINK(1)", "lemon", "", ""]);
+
+  assert.deepEqual(g.get({ action: "pending", token }).words.map((w) => w.key), ["cut up fryer chicken", "ditalini pasta", "lemon"]);
+  assert.deepEqual(g.get({ action: "words", token }).words, {});
+
+  const answer = g.post({ action: "answer", token, words: { "ditalini pasta": "barilla ditalini pasta", nope: "x", lemon: "  " } });
+  assert.equal(answer.answered, 1);
+  assert.deepEqual(g.get({ action: "words", token }).words, { "ditalini pasta": "barilla ditalini pasta" });
+  assert.deepEqual(g.get({ action: "pending", token }).words.map((w) => w.key), ["cut up fryer chicken", "lemon"]);
+
+  assert.equal(g.get({ action: "words", token: "wrong" }).error, "bad token");
+  assert.equal(g.post({ action: "ask", token, words: { not: "a list" } }).ok, false);
+  assert.equal(g.get({ action: "answer", token, words: "not json" }).ok, false);
+  assert.equal(g.sheets.Inbox.rows.length, 1, "the recipe inbox tab is left alone");
 });
