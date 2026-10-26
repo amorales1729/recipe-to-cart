@@ -88,8 +88,8 @@ test("plan: shopping list, pantry line, spice list, your own searches", () => {
   const plan = buildPlan(recipes, ["olive oil"], { onion: "white onion" });
   assert.deepEqual(plan.recipes, ["Tacos"]);
   assert.deepEqual(plan.items.map((i) => [i.name, i.amount, i.query]), [["ground beef", "1 lb", "ground beef"], ["onion", "1", "white onion"]]);
-  assert.deepEqual(plan.pantrySkipped, ["olive oil"]);
-  assert.deepEqual(plan.spices, [{ name: "chili powder", amount: "2 tsp" }]);
+  assert.deepEqual(plan.pantrySkipped, [{ name: "olive oil", amount: "1 tbsp", searchUrl: searchUrl("olive oil") }]);
+  assert.deepEqual(plan.spices, [{ name: "chili powder", amount: "2 tsp", searchUrl: searchUrl("chili powder") }]);
 });
 
 test("plan: your searches win, then suggested ones, then the rules", () => {
@@ -107,7 +107,8 @@ test("plan: a staple the task marks as pantry is left off, unless you set your o
   const suggested = { "all purpose flour": "(pantry)", "vanilla extract": "(pantry)" };
   let plan = buildPlan(recipes, [], {}, suggested);
   assert.deepEqual(plan.items.map((i) => i.key), ["grated carrot"]);
-  assert.deepEqual(plan.pantrySkipped, ["all-purpose flour", "vanilla extract"]);
+  assert.deepEqual(plan.pantrySkipped.map((p) => p.name), ["all-purpose flour", "vanilla extract"]);
+  assert.equal(plan.pantrySkipped[0].searchUrl, searchUrl("all-purpose flour")); // the rules' search, not "(pantry)"
   plan = buildPlan(recipes, [], { "vanilla extract": "pure vanilla extract" }, suggested);
   assert.deepEqual(plan.items.map((i) => i.query), ["pure vanilla extract", "grated carrots"]);
 });

@@ -26,3 +26,9 @@ ul.recipes .lines { flex-basis: 100%; margin: 4px 0 0 24px; padding-left: 16px; 
 ul.chips { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 ul.chips li { background: var(--bg); border: 1px solid var(--line); border-radius: 16px; padding: 2px 10px; }
 #pantry-form input { flex: 1; margin-top: 0; }
+h3 { margin: 14px 0 4px; font-size: 15px; }
+h3 a { font-weight: normal; margin-left: 8px; }
+ul.left-off { list-style: none; padding: 0; margin: 0; }
+ul.left-off li { padding: 5px 0; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: baseline; }
+ul.left-off li .amount { color: var(--muted); min-width: 70px; }
+ul.left-off li a { margin-left: auto; white-space: nowrap; }

@@ -22,15 +22,16 @@ export function buildPlan(recipes, pantry, searchTerms = {}, suggestedWords = {}
   const all = buildGroceryList(parsed, pantry);
   const items = [], pantrySkipped = [], spices = [];
   for (const item of all) {
-    if (item.category === "spice") spices.push({ name: item.name, amount: amountText(item) });
-    else if (item.skipReason) pantrySkipped.push(item.name);
-    else if (!searchTerms[item.key] && suggestedWords[item.key] === PANTRY_WORD) pantrySkipped.push(item.name);
-    else {
-      const [query, querySource] = searchTerms[item.key] ? [searchTerms[item.key], "you"]
-        : suggestedWords[item.key] ? [suggestedWords[item.key], "suggested"]
-        : [searchQuery(item.name, item.unit), "rules"];
-      items.push({ ...item, amount: amountText(item), query, querySource, searchUrl: searchUrl(query) });
-    }
+    const suggested = suggestedWords[item.key] === PANTRY_WORD ? "" : suggestedWords[item.key];
+    const [query, querySource] = searchTerms[item.key] ? [searchTerms[item.key], "you"]
+      : suggested ? [suggested, "suggested"]
+      : [searchQuery(item.name, item.unit), "rules"];
+    // Left-off items keep a Walmart link, in case you're running low.
+    const leftOff = { name: item.name, amount: amountText(item), searchUrl: searchUrl(query) };
+    if (item.category === "spice") spices.push(leftOff);
+    else if (item.skipReason) pantrySkipped.push(leftOff);
+    else if (!searchTerms[item.key] && suggestedWords[item.key] === PANTRY_WORD) pantrySkipped.push(leftOff);
+    else items.push({ ...item, amount: amountText(item), query, querySource, searchUrl: searchUrl(query) });
   }
   return { recipes: recipes.map((r) => r.title), items, pantrySkipped, spices };
 }

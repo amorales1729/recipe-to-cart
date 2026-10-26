@@ -91,11 +91,7 @@ function render() {
     });
   }
   $("list").hidden = false;
-  showPantryLine();
-  if (plan.spices.length) {
-    $("spice-list").innerHTML = plan.spices.map((s) => `<li>${escapeHtml(s.amount)} ${escapeHtml(s.name)}</li>`).join("");
-    $("spices").hidden = false;
-  }
+  showLeftOff();
 }
 
 function showOptions(row) {
@@ -192,15 +188,20 @@ async function alwaysHave(row) {
   await storage.addToPantry(row.item.name);
   rows.delete(row.item.key);
   row.el.remove();
-  plan.pantrySkipped.push(row.item.name);
-  showPantryLine();
+  plan.pantrySkipped.push({ name: row.item.name, amount: row.item.amount, searchUrl: row.item.searchUrl });
+  showLeftOff();
   updateTotal();
 }
 
-function showPantryLine() {
+// Pantry staples and spices stay visible, each with a Walmart link in case you're running low.
+function showLeftOff() {
+  const li = (x) => `<li><span class="amount">${escapeHtml(x.amount)}</span> <span>${escapeHtml(x.name)}</span>
+    <a href="${x.searchUrl}" target="_blank">Find on Walmart</a></li>`;
+  $("pantry-items").innerHTML = plan.pantrySkipped.map(li).join("");
+  $("spice-list").innerHTML = plan.spices.map(li).join("");
   $("pantry").hidden = !plan.pantrySkipped.length;
-  $("pantry").innerHTML = `Left off as pantry staples: ${plan.pantrySkipped.map(escapeHtml).join(", ")}.
-    <a href="app.html#pantry">Edit pantry</a>`;
+  $("spices").hidden = !plan.spices.length;
+  $("left-off").hidden = !plan.pantrySkipped.length && !plan.spices.length;
 }
 
 async function changeSearch(row) {
