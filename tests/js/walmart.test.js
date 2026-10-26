@@ -102,6 +102,16 @@ test("plan: your searches win, then suggested ones, then the rules", () => {
   ]);
 });
 
+test("plan: a staple the task marks as pantry is left off, unless you set your own search", () => {
+  const recipes = [{ title: "Muffins", lines: ["2 c. all-purpose flour", "1 tsp vanilla extract", "2 c. grated carrots"] }];
+  const suggested = { "all purpose flour": "(pantry)", "vanilla extract": "(pantry)" };
+  let plan = buildPlan(recipes, [], {}, suggested);
+  assert.deepEqual(plan.items.map((i) => i.key), ["grated carrot"]);
+  assert.deepEqual(plan.pantrySkipped, ["all-purpose flour", "vanilla extract"]);
+  plan = buildPlan(recipes, [], { "vanilla extract": "pure vanilla extract" }, suggested);
+  assert.deepEqual(plan.items.map((i) => i.query), ["pure vanilla extract", "grated carrots"]);
+});
+
 test("checkout is always blocked", () => {
   for (const url of ["https://www.walmart.com/checkout", "https://www.walmart.com/checkout/review-order?x=1",
     "https://www.walmart.com/payment", "https://www.walmart.com/place-order"]) assert.ok(isBlockedUrl(url), url);
