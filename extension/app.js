@@ -51,13 +51,12 @@ function waitingCard(w) {
   return `
     <li class="recipe-card waiting" data-waiting="${escapeHtml(w.id)}">
       <div class="photo ${w.error ? "bad" : ""}">
-        <div>${w.error ? "" : `<div class="spinner"></div>`}${escapeHtml(w.error || "Reading the recipe from your iPhone…")}</div>
+        <div>${w.error ? "" : `<div class="spinner"></div>`}${escapeHtml(w.error || "Reading the recipe…")}</div>
       </div>
       <div class="body">
         <div class="title">${escapeHtml(title)}</div>
         <div class="source">${escapeHtml(hostname(w.url))}</div>
       </div>
-      <div class="tags"><span class="tag blue">From your iPhone</span></div>
       <div class="links">
         <button class="chip-btn retry">${RETRY}Try again</button>
         <a class="icon-btn" href="${escapeHtml(w.url)}" target="_blank" aria-label="Open recipe" title="Open recipe">${EXTERNAL}</a>
@@ -70,7 +69,7 @@ function recipeCard(r, isNew) {
   const photo = r.image
     ? `style="background-image: url('${escapeHtml(cssUrl(r.image))}')"`
     : `style="background-color: ${colorFor(r.title)}"`;
-  const phoneTag = isNew ? `<span class="tag blue">New from your iPhone</span>` : r.fromPhone ? `<span class="tag">From your iPhone</span>` : "";
+  const newTag = isNew ? `<span class="tag green">New</span>` : "";
   return `
     <li class="recipe-card" data-recipe="${escapeHtml(r.id)}">
       <label class="pick">
@@ -84,7 +83,7 @@ function recipeCard(r, isNew) {
       </label>
       <div class="tags">
         <button class="chip-btn show" aria-expanded="${opened.has(r.id)}">${LIST}${r.lines.length} ingredients${CHEVRON}</button>
-        ${phoneTag}
+        ${newTag}
       </div>
       <ul class="lines" ${opened.has(r.id) ? "" : "hidden"}>${r.lines.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ul>
       <div class="links">

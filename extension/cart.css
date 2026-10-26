@@ -42,9 +42,14 @@ h3 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing
 .card > p:first-of-type { margin-top: 4px; }
 
 /* status banner */
-#status { border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; }
-#status.ok { background: var(--accent-tint); border-color: #b9dcc7; color: #1f3f2d; }
-#status.bad { background: var(--bad-tint); border-color: #f2c4c0; color: #5c1612; }
+#status.card, .status-bar { border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; }
+#status.card.ok, .status-bar.ok { background: var(--accent-tint); border-color: #b9dcc7; color: #1f3f2d; }
+#status.card.bad, .status-bar.bad { background: var(--bad-tint); border-color: #f2c4c0; color: #5c1612; }
+.status-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.status-text { flex: 1 1 280px; min-width: 0; }
+.status-text #status:empty, .status-text #status-note:empty { display: none; }
+.status-bar .progress { display: flex; flex-wrap: wrap; gap: 8px; }
+.status-bar .progress button { min-height: 40px; padding: 0 18px; border-radius: 20px; font-size: 14px; }
 
 /* ---- buttons ---- */
 button.primary, a.primary { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 24px; border-radius: 24px; border: 0; background: var(--accent); color: #fff; font-weight: 600; font-size: 16px; cursor: pointer; text-decoration: none; }
@@ -122,8 +127,7 @@ label + label { display: block; margin-top: 12px; }
 .item .state:empty { display: none; }
 
 /* ---- cart: kitchen section ---- */
-.kitchen-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px 32px; margin-top: 16px; }
-ul.left-off { list-style: none; margin: 0; padding: 0; }
+ul.left-off { list-style: none; margin: 12px 0 0; padding: 0; }
 ul.left-off li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
 ul.left-off li .what { flex: 1; min-width: 0; }
 ul.left-off li .what strong { font-weight: 600; }
@@ -137,10 +141,7 @@ ul.left-off li .err { flex-basis: 100%; font-size: 13px; display: flex; flex-wra
 .summary .total { border-top: 1px solid var(--line-soft); margin-top: 6px; padding: 12px 0 16px; }
 .summary .total span:first-child { color: var(--fg); font-weight: 700; }
 .summary .total span:last-child { font-weight: 800; font-size: 20px; }
-.summary .progress { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-top: 12px; }
-.summary .progress button { flex: 1 1 100%; min-height: 44px; justify-content: center; font-size: 15px; }
 .summary #add { font-size: 15px; padding: 0 16px; }
-.summary .progress .note { margin: 0; flex-basis: 100%; }
 .note { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 0; font-size: 13px; color: var(--muted); }
 .note svg { flex: none; margin-top: 2px; }
 

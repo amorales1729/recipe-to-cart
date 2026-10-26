@@ -33,7 +33,13 @@
       </div>
     </div>
 
-    <section id="status" class="card" role="status"></section>
+    <section id="status-bar" class="card status-bar" hidden>
+      <div class="status-text">
+        <div id="status" role="status"></div>
+        <div id="status-note" class="muted"></div>
+      </div>
+      <div id="progress" class="progress"></div>
+    </section>
 
     <section id="empty-list" class="empty" hidden>
       <div class="art"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6L5 3H2"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg></div>
@@ -49,16 +55,7 @@
         <section id="left-off" class="card" hidden>
           <h2>Probably already in your kitchen</h2>
           <p class="muted small">These aren't in the cart. If you're running low on one, add it here.</p>
-          <div class="kitchen-grid">
-            <div id="pantry" hidden>
-              <h3>Pantry staples</h3>
-              <ul id="pantry-items" class="left-off"></ul>
-            </div>
-            <div id="spices" hidden>
-              <h3>Seasonings &amp; spices</h3>
-              <ul id="spice-list" class="left-off"></ul>
-            </div>
-          </div>
+          <ul id="left-off-items" class="left-off"></ul>
         </section>
       </div>
 
@@ -69,7 +66,6 @@
           <div class="line"><span>Added from your kitchen</span><span id="extra-count">0</span></div>
           <div class="line total"><span>Estimated total</span><span id="total">$0.00</span></div>
           <button id="add" class="primary wide" disabled>Add to Walmart cart</button>
-          <div id="progress" class="progress"></div>
           <p class="note">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
             <span>Nothing is ever bought. This only fills your Walmart cart; you check out yourself.</span>
