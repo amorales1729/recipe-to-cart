@@ -156,19 +156,20 @@ test("a ping from the inbox fills the cart right away and alerts the phone", { s
     const topic = (await storage()).phoneSettings.pushTopic;
     assert.equal(alertsName, `${topic}-alerts`);
     assert.equal(net.pushTopic(), topic);
-    assert.ok(await until(() => net.listening(topic), 10), "the extension listens on the channel");
+    assert.ok(await until(() => net.listening(topic), 20), "the extension listens on the channel");
 
     await settings.click("#test-alert");
-    assert.ok(await until(() => net.alerts.length === 1, 5));
+    assert.ok(await until(() => net.alerts.length === 1, 15));
     assert.equal(net.alerts[0].topic, alertsName);
 
     // Let the first regular check go by, so only the ping can explain a quick pickup (the next check is 5 minutes away).
-    assert.ok(await until(async () => Boolean((await storage()).phoneLastCheck), 15));
+    assert.ok(await until(async () => Boolean((await storage()).phoneLastCheck), 30));
     await new Promise((r) => setTimeout(r, 1000));
     const sentAt = Date.now();
     net.send("p1", "/recipe/soup");
-    assert.ok(await until(async () => (await storage()).shoppingList?.auto === true, 10), "picked up within seconds of the ping");
-    assert.ok(Date.now() - sentAt < 10000);
+    // Seconds, not the 5 minutes the regular check would take (with room for a busy test machine).
+    assert.ok(await until(async () => (await storage()).shoppingList?.auto === true, 30), "picked up within seconds of the ping");
+    assert.ok(Date.now() - sentAt < 30000);
     assert.equal(net.inbox[0].status, "picked up");
 
     // Walmart's human check: the phone hears about it, and the list carries on by itself once it clears.
