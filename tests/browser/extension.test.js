@@ -89,7 +89,8 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
     const row = (name) => cart.locator("#rows tr", { hasText: name });
     assert.ok(await until(async () => (await rows.count()) === 11 && (await cart.locator("#rows select").count()) === 11
       && (await cart.innerText("#status")).trim() === "", 120, cart), "every item searched");
-    assert.match(await cart.innerText("#pantry"), /Olive Oil, Extra Virgin Olive Oil/);
+    assert.match(await cart.innerText("#pantry"), /Olive Oil[\s\S]*Extra Virgin Olive Oil/);
+    assert.match(await cart.locator("#pantry a", { hasText: "Find on Walmart" }).first().getAttribute("href"), /walmart\.com\/search\?q=olive/);
     assert.equal(await cart.locator("#spices").isHidden(), true); // nothing from the spice rack in this soup
 
     // Cheapest for the amount needed, never the flavored snack: one 16 oz box of pasta ($1.75),

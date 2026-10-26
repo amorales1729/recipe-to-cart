@@ -24,14 +24,20 @@
       <button id="add" class="primary" disabled>Add to Walmart cart</button>
       <span id="total" class="muted"></span>
     </div>
-    <p id="pantry" class="muted small" hidden></p>
     <p class="muted small">Nothing is ever purchased. This only adds to your cart; you check out yourself.</p>
   </section>
 
-  <section id="spices" class="card" hidden>
-    <h2>Spices &amp; seasonings</h2>
-    <p class="muted small">Check your spice rack. These aren't added to the cart.</p>
-    <ul id="spice-list"></ul>
+  <section id="left-off" class="card" hidden>
+    <h2>Not added to the cart</h2>
+    <p class="muted small">You probably have these at home. If you're low, open one on Walmart and add it there.</p>
+    <div id="pantry" hidden>
+      <h3>Pantry staples <a class="small" href="app.html#pantry">Edit pantry</a></h3>
+      <ul id="pantry-items" class="left-off"></ul>
+    </div>
+    <div id="spices" hidden>
+      <h3>Spices &amp; seasonings</h3>
+      <ul id="spice-list" class="left-off"></ul>
+    </div>
   </section>
 
   <script type="module" src="cart.js"></script>
