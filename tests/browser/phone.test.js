@@ -125,7 +125,7 @@ test("recipes from the phone are picked up and wait for review, or fill the cart
     // It shows on the Recipes page, new and already picked; shopping opens the list for it and clears the badge.
     await phone.goto(`chrome-extension://${extId}/app.html`);
     const card = phone.locator("#recipe-list .recipe-card", { hasText: "Italian Chicken Soup" });
-    assert.ok(await until(async () => /New from your iPhone/.test(await card.innerText()), 5));
+    assert.ok(await until(async () => (await card.locator(".tag.green").innerText().catch(() => "")) === "New", 5));
     assert.equal(await card.locator("input[type=checkbox]").isChecked(), true);
     assert.equal(await phone.innerText("#shop"), "Shop for 1 recipe");
 

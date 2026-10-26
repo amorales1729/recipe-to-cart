@@ -95,9 +95,10 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
     const row = (name) => cart.locator("#rows .item", { hasText: name });
     assert.ok(await until(async () => (await rows.count()) === 11 && (await cart.locator("#rows select").count()) === 11
       && (await cart.innerText("#status")).trim() === "", 120, cart), "every item searched");
-    assert.match(await cart.innerText("#pantry"), /Olive Oil[\s\S]*Extra Virgin Olive Oil/);
-    assert.equal(await cart.locator("#pantry-items button", { hasText: "Add to cart" }).count(), 2);
-    assert.equal(await cart.locator("#spices").isHidden(), true); // nothing from the spice rack in this soup
+    // Staples left off the cart are one list, alphabetical, each with Add to cart.
+    assert.match(await cart.innerText("#left-off"), /Extra Virgin Olive Oil[\s\S]*Olive Oil/);
+    assert.equal(await cart.locator("#left-off-items button", { hasText: "Add to cart" }).count(), 2);
+    assert.match(await cart.innerText("#status-note"), /^Prices checked /);
 
     // Cheapest for the amount needed, never the flavored snack: one 16 oz box of pasta ($1.75),
     // but two 32 oz broths ($5.00) beat four 16 oz ones ($7.00).
@@ -151,9 +152,9 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
     assert.equal(added.length, 3); // pasta once, broth twice
 
     // A pantry staple can still go in the cart from the kitchen section.
-    await cart.locator("#pantry-items li").first().locator("button").click();
-    assert.ok(await until(async () => /In cart/.test(await cart.locator("#pantry-items li").first().innerText()), 60, cart),
-      await cart.locator("#pantry-items li").first().innerText());
+    await cart.locator("#left-off-items li").first().locator("button").click();
+    assert.ok(await until(async () => /In cart/.test(await cart.locator("#left-off-items li").first().innerText()), 60, cart),
+      await cart.locator("#left-off-items li").first().innerText());
     assert.equal(added.length, 4);
     assert.equal(await cart.innerText("#extra-count"), "1");
     assert.ok(await until(() => ctx.pages().some((p) => p.url() === "https://www.walmart.com/cart"), 10, cart));
@@ -161,7 +162,7 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
 
     const saved = await worker.evaluate(() => chrome.storage.local.get(null));
     assert.equal(saved.recipes.length, 1);
-    assert.deepEqual(Object.keys(saved.choices).sort(), ["ditalini pasta", "low sodium chicken broth", "olive oil"]);
+    assert.deepEqual(Object.keys(saved.choices).sort(), ["ditalini pasta", "extra virgin olive oil", "low sodium chicken broth"]);
     assert.deepEqual(saved.searchTerms, { "ditalini pasta": "barilla ditalini" });
 
     // Coming back after adding shows what's in the cart, and doesn't add it again.

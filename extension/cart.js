@@ -27,10 +27,18 @@ let stopRequested = false;
 let onStop = null;
 class Stopped extends Error {}
 
+// The bar at the top: what's happening, with Stop, Pick up and Start over beside it.
 function setStatus(html, cls = "") {
-  $("status").hidden = !html;
-  $("status").className = `card ${cls}`;
   $("status").innerHTML = html;
+  $("status-bar").className = `card status-bar ${cls}`;
+  updateBar();
+}
+
+function updateBar() {
+  const idle = session && !running && !session.task && session.checkedAt;
+  const when = idle && new Date(session.checkedAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
+  $("status-note").textContent = idle && !$("status").innerHTML ? `Prices checked ${when}.` : "";
+  $("status-bar").hidden = !$("status").innerHTML && !$("status-note").textContent && !$("progress").innerHTML;
 }
 
 async function save() {
@@ -139,6 +147,7 @@ function showEmpty() {
   $("for-line").hidden = true;
   $("list-area").hidden = true;
   $("empty-list").hidden = false;
+  $("progress").innerHTML = "";
   setStatus("");
 }
 
@@ -337,10 +346,10 @@ function showProgress() {
     $("pick-up").onclick = pickUp;
     $("restart").onclick = startOver;
   } else if (session) {
-    p.innerHTML = `<button id="restart" class="ghost">Start over</button>
-      <p class="note">Searches every item again for today's prices.</p>`;
+    p.innerHTML = `<button id="restart" class="ghost" title="Search every item again for today's prices">Start over</button>`;
     $("restart").onclick = startOver;
   } else p.innerHTML = "";
+  updateBar();
 }
 
 async function pickUp() {
@@ -371,6 +380,7 @@ function findProducts() {
       await save();
       if (!stopRequested) await sleep(800 + Math.random() * 1200);
     }
+    session.checkedAt = Date.now();
     setStatus("");
   });
 }
@@ -432,13 +442,11 @@ function searchRow(row, typedQuery = null) {
   });
 }
 
-// Pantry staples and spices stay visible, each with an Add to cart button in case you're running low.
+// Staples and spices left off the cart stay visible in one list, each with an Add to cart button in case you're running low.
 function showLeftOff() {
-  fillLeftOff($("pantry-items"), plan.pantrySkipped);
-  fillLeftOff($("spice-list"), plan.spices);
-  $("pantry").hidden = !plan.pantrySkipped.length;
-  $("spices").hidden = !plan.spices.length;
-  $("left-off").hidden = !plan.pantrySkipped.length && !plan.spices.length;
+  const list = [...plan.pantrySkipped, ...plan.spices].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  fillLeftOff($("left-off-items"), list);
+  $("left-off").hidden = !list.length;
 }
 
 function fillLeftOff(ul, list) {

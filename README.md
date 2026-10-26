@@ -61,8 +61,8 @@ came up with, and a scheduled task suggests better Walmart wording that the exte
   The search-words task decides which ingredients count. They're still listed at the bottom of
   your shopping list with an **Add to cart** button in case you're running low.
 - **Spices and seasonings** from the spice rack (ground cumin, paprika, dried oregano, red pepper
-  flakes, Italian seasoning) go on a separate list to check against your rack, and aren't added to
-  the cart. Packets and mixes (taco seasoning packet, gravy mix, onion soup mix) and fresh herbs are
+  flakes, Italian seasoning) aren't added to the cart either. They're in the same list at the
+  bottom, to check against your rack. Packets and mixes (taco seasoning packet, gravy mix, onion soup mix) and fresh herbs are
   regular groceries.
 - Amounts from several recipes are combined (4 cups + 1 quart of broth = 8 cups).
 
