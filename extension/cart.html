@@ -2,43 +2,79 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Recipe to Cart</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recipe to Cart: your shopping list</title>
   <link rel="stylesheet" href="cart.css">
 </head>
 <body>
-  <header>
-    <h1>Recipe to Cart</h1>
-    <p class="muted"><span id="recipes"></span> · <a href="app.html">Add more recipes</a></p>
+  <header class="topbar">
+    <div class="inner">
+      <a class="brand" href="app.html">
+        <span class="mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6L5 3H2"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg></span>
+        Recipe to Cart
+      </a>
+      <nav class="tabs" aria-label="Main">
+        <a href="app.html">Recipes</a>
+        <a href="cart.html" aria-current="page">Shopping list</a>
+        <a href="phone.html">Phone setup</a>
+      </nav>
+    </div>
   </header>
 
-  <section id="status" class="card"></section>
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <h1>Your shopping list</h1>
+        <div class="actions" style="margin-top: 0">
+          <span class="muted">For</span>
+          <span id="recipes" class="actions" style="margin-top: 0; gap: 8px"></span>
+          <a href="app.html" class="small">+ Add a recipe</a>
+        </div>
+      </div>
+    </div>
 
-  <section id="list" class="card" hidden>
-    <table>
-      <thead>
-        <tr><th></th><th>Need</th><th>Walmart product</th><th>Qty</th><th>Price</th><th>Status</th></tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
-    <div class="actions">
-      <button id="add" class="primary" disabled>Add to Walmart cart</button>
-      <span id="total" class="muted"></span>
-    </div>
-    <p class="muted small">Nothing is ever purchased. This only adds to your cart; you check out yourself.</p>
-  </section>
+    <section id="status" class="card" role="status"></section>
 
-  <section id="left-off" class="card" hidden>
-    <h2>Not added to the cart</h2>
-    <p class="muted small">You probably have these at home. If you're low, open one on Walmart and add it there.</p>
-    <div id="pantry" hidden>
-      <h3>Pantry staples <a class="small" href="app.html#pantry">Edit pantry</a></h3>
-      <ul id="pantry-items" class="left-off"></ul>
+    <div class="layout">
+      <div class="main-col">
+        <div id="rows" class="main-col" style="flex-basis: auto"></div>
+
+        <section id="left-off" class="card" hidden>
+          <h2>Probably already in your kitchen</h2>
+          <p class="muted small">These aren't in the cart. If you're running low on one, add it here.</p>
+          <div class="kitchen-grid">
+            <div id="pantry" hidden>
+              <h3>Pantry staples <a class="small" href="app.html#pantry" style="text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 6px">Edit</a></h3>
+              <ul id="pantry-items" class="left-off"></ul>
+            </div>
+            <div id="spices" hidden>
+              <h3>Seasonings &amp; spices</h3>
+              <ul id="spice-list" class="left-off"></ul>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="side">
+        <section id="list" class="card summary" hidden>
+          <h2 style="margin-bottom: 12px">Summary</h2>
+          <div class="line"><span>Items</span><span id="count">0</span></div>
+          <div class="line"><span>Added from your kitchen</span><span id="extra-count">0</span></div>
+          <div class="line total"><span>Estimated total</span><span id="total">$0.00</span></div>
+          <button id="add" class="primary wide" disabled>Add to Walmart cart</button>
+          <p class="note">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <span>Nothing is ever bought. This only fills your Walmart cart; you check out yourself.</span>
+          </p>
+        </section>
+        <section class="card small">
+          <h2 style="font-size: 16px">How picks are made</h2>
+          <p class="muted" style="margin: 0 0 8px">Each item is the cheapest good match for the amount the recipe needs, at today's Walmart prices.</p>
+          <p class="muted" style="margin: 0"><strong style="color: var(--fg)">Suggested search</strong> means the ingredient was reworded so Walmart finds the right product.</p>
+        </section>
+      </aside>
     </div>
-    <div id="spices" hidden>
-      <h3>Spices &amp; seasonings</h3>
-      <ul id="spice-list" class="left-off"></ul>
-    </div>
-  </section>
+  </main>
 
   <script type="module" src="cart.js"></script>
 </body>

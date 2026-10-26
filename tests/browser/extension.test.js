@@ -25,7 +25,8 @@ function searchPage(q) {
   const id = String([...q].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 100000, 7));
   const items = [
     { __typename: "Product", usItemId: id + "1", name: `Fancy Flavored ${q} Snack, 4 oz`, canonicalUrl: `/ip/x/${id}1`, price: 9.99 },
-    { __typename: "Product", usItemId: id + "2", name: `Great Value ${q}, 32 oz`, canonicalUrl: `/ip/y/${id}2`, price: 2.5 },
+    { __typename: "Product", usItemId: id + "2", name: `Great Value ${q}, 32 oz`, canonicalUrl: `/ip/y/${id}2`, price: 2.5,
+      imageInfo: { thumbnailUrl: `https://www.walmart.com/img/${id}2.jpg` } },
     { __typename: "Product", usItemId: id + "3", name: `Clover Valley ${q}, 16 oz`, canonicalUrl: `/ip/z/${id}3`, price: 1.75 },
   ];
   const data = { props: { pageProps: { initialData: { searchResult: { itemStacks: [{ items }] } } } } };
@@ -77,6 +78,9 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
     worker = worker || (await ctx.waitForEvent("serviceworker"));
     const extId = worker.url().split("/")[2];
 
+    // The worker can be found before its module has finished loading.
+    assert.ok(await until(() => worker.evaluate(() => typeof globalThis.shopForTab === "function" && Boolean(chrome.tabs)), 10, recipePage));
+
     // Press the toolbar button on the recipe page.
     await worker.evaluate(async () => {
       const [tab] = await chrome.tabs.query({ url: "https://recipes.example/*" });
@@ -85,12 +89,12 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
     let cart = null;
     assert.ok(await until(() => (cart = ctx.pages().find((p) => p.url().includes(`${extId}/cart.html`))), 10, recipePage));
 
-    const rows = cart.locator("#rows tr");
-    const row = (name) => cart.locator("#rows tr", { hasText: name });
+    const rows = cart.locator("#rows .item");
+    const row = (name) => cart.locator("#rows .item", { hasText: name });
     assert.ok(await until(async () => (await rows.count()) === 11 && (await cart.locator("#rows select").count()) === 11
       && (await cart.innerText("#status")).trim() === "", 120, cart), "every item searched");
     assert.match(await cart.innerText("#pantry"), /Olive Oil[\s\S]*Extra Virgin Olive Oil/);
-    assert.match(await cart.locator("#pantry a", { hasText: "Find on Walmart" }).first().getAttribute("href"), /walmart\.com\/search\?q=olive/);
+    assert.equal(await cart.locator("#pantry-items button", { hasText: "Add to cart" }).count(), 2);
     assert.equal(await cart.locator("#spices").isHidden(), true); // nothing from the spice rack in this soup
 
     // Cheapest for the amount needed, never the flavored snack: one 16 oz box of pasta ($1.75),
@@ -100,6 +104,12 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
     assert.match(await picked("Low Sodium Chicken Broth"), /^Great Value low sodium chicken broth, 32 oz · \$2\.50 · cheapest$/);
     assert.equal(await row("Low Sodium Chicken Broth").locator("input[type=number]").inputValue(), "2");
     assert.match(await row("Cut Up Fryer Chicken").locator(".query").innerText(), /^whole chicken cut up$/);
+
+    // Grouped by aisle, with the picked product's photo.
+    assert.equal(await cart.locator(".aisle[data-aisle=meat] .item", { hasText: "Cut Up Fryer Chicken" }).count(), 1);
+    assert.equal(await cart.locator(".aisle[data-aisle=pantry] .item", { hasText: "Low Sodium Chicken Broth" }).count(), 1);
+    assert.match(await row("Low Sodium Chicken Broth").locator(".thumb img").getAttribute("src"), /^https:\/\/www\.walmart\.com\/img\//);
+    assert.match(await row("Low Sodium Chicken Broth").locator(".line-total").innerText(), /^\$5\.00$/);
 
     // "I always have this" takes celery off the list and remembers it.
     await row("Celery").locator(".have").click();
@@ -119,12 +129,18 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
     await cart.click("#add");
     assert.ok(await until(async () => /Added 2 of 2/.test(await cart.innerText("#status")), 90, cart), await cart.innerText("#status"));
     assert.equal(added.length, 3); // pasta once, broth twice
+
+    // A pantry staple can still go in the cart from the kitchen section.
+    await cart.locator("#pantry-items li").first().locator("button").click();
+    assert.ok(await until(async () => /In cart/.test(await cart.locator("#pantry-items li").first().innerText()), 30, cart));
+    assert.equal(added.length, 4);
+    assert.equal(await cart.innerText("#extra-count"), "1");
     assert.ok(await until(() => ctx.pages().some((p) => p.url() === "https://www.walmart.com/cart"), 10, cart));
     assert.deepEqual(checkoutHits, []);
 
     const saved = await worker.evaluate(() => chrome.storage.local.get(null));
     assert.equal(saved.recipes.length, 1);
-    assert.deepEqual(Object.keys(saved.choices).sort(), ["ditalini pasta", "low sodium chicken broth"]);
+    assert.deepEqual(Object.keys(saved.choices).sort(), ["ditalini pasta", "low sodium chicken broth", "olive oil"]);
     assert.deepEqual(saved.searchTerms, { "ditalini pasta": "barilla ditalini" });
     assert.ok(saved.pantry.includes("celery"));
 

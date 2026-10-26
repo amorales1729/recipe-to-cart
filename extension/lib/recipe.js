@@ -1,5 +1,5 @@
 // Get a recipe out of a web page's schema.org data, or out of pasted text.
-// A recipe is stored as {title, url, yields, lines: [ingredient lines], instructions: [steps]}.
+// A recipe is stored as {title, url, image, yields, lines: [ingredient lines], instructions: [steps]}.
 // Lines are parsed when a list is built, so parser fixes apply to recipes saved earlier.
 
 export class RecipeError extends Error {}
@@ -9,6 +9,7 @@ export function readRecipePage() {
   return {
     url: location.href,
     title: document.title,
+    ogImage: (document.querySelector('meta[property="og:image"]') || {}).content || "",
     jsonld: Array.from(document.querySelectorAll('script[type="application/ld+json"]'), (s) => s.textContent),
     selection: String(window.getSelection ? window.getSelection() : ""),
   };
@@ -81,6 +82,14 @@ function instructions(value) {
   return steps;
 }
 
+// The recipe's photo: schema.org allows a URL, a list of them, or ImageObjects.
+function imageUrl(value) {
+  if (Array.isArray(value)) return value.map(imageUrl).find(Boolean) || "";
+  if (value && typeof value === "object") return imageUrl(value.url || value.contentUrl);
+  const url = typeof value === "string" ? decodeEntities(value.trim()) : "";
+  return /^https:\/\//i.test(url) ? url : "";
+}
+
 /** A recipe from a page read by readRecipePage(). Falls back to the text you selected on the page. */
 export function fromPage(page) {
   const data = findJsonLdRecipe(page.jsonld || []);
@@ -90,6 +99,7 @@ export function fromPage(page) {
       return {
         title: text(data.name) || page.title || "Untitled recipe",
         url: page.url || "",
+        image: imageUrl(data.image) || imageUrl(page.ogImage),
         yields: text(data.recipeYield),
         lines,
         instructions: instructions(data.recipeInstructions),
@@ -97,7 +107,7 @@ export function fromPage(page) {
     }
   }
   if (page.selection && page.selection.trim()) {
-    return { ...fromText(page.selection, null), url: page.url || "" };
+    return { ...fromText(page.selection, null), url: page.url || "", image: imageUrl(page.ogImage) };
   }
   throw new RecipeError(
     "No recipe found on this page. Select the recipe text on the page and click the button again, or paste it on the Recipes page.",
@@ -108,7 +118,8 @@ export function fromPage(page) {
 export function fromHtml(html, url = "") {
   const jsonld = [...String(html).matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
   const title = (String(html).match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || "";
-  return fromPage({ url, title: text(title), jsonld, selection: "" });
+  const ogImage = (String(html).match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)/i) || [])[1] || "";
+  return fromPage({ url, title: text(title), ogImage, jsonld, selection: "" });
 }
 
 // ---- pasted text (Apple Notes, copied web pages) ----
