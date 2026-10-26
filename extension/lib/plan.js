@@ -9,9 +9,13 @@ import { STORE_BRANDS, searchUrl } from "./walmart.js";
 
 export const MAX_OPTIONS = 5;
 
+// What the search-words task writes instead of a search for a staple most kitchens already have.
+export const PANTRY_WORD = "(pantry)";
+
 /**
  * recipes: saved recipes {title, lines}. searchTerms: {ingredient key: your own search}.
  * suggestedWords: {ingredient key: suggested search}. Yours win, then the suggestions, then the rules.
+ * A suggestion of PANTRY_WORD leaves the item off as a pantry staple, unless you've set your own search.
  */
 export function buildPlan(recipes, pantry, searchTerms = {}, suggestedWords = {}) {
   const parsed = recipes.map((r) => ({ title: r.title, ingredients: parseLines(r.lines) }));
@@ -20,6 +24,7 @@ export function buildPlan(recipes, pantry, searchTerms = {}, suggestedWords = {}
   for (const item of all) {
     if (item.category === "spice") spices.push({ name: item.name, amount: amountText(item) });
     else if (item.skipReason) pantrySkipped.push(item.name);
+    else if (!searchTerms[item.key] && suggestedWords[item.key] === PANTRY_WORD) pantrySkipped.push(item.name);
     else {
       const [query, querySource] = searchTerms[item.key] ? [searchTerms[item.key], "you"]
         : suggestedWords[item.key] ? [suggestedWords[item.key], "suggested"]
