@@ -3,6 +3,7 @@
 import { fromPage, readRecipePage } from "./lib/recipe.js";
 import { saveRecipe } from "./lib/storage.js";
 import { POLL_MINUTES, poll, updateBadge } from "./inbox.js";
+import { listen } from "./push.js";
 
 async function openPage(path) {
   // Reuse an open Recipe to Cart tab instead of piling up new ones.
@@ -41,10 +42,18 @@ async function shopForTab(tab) {
 chrome.action.onClicked.addListener(shopForTab);
 
 // Recipes from your phone: check when Chrome starts, then every few minutes while it's open.
+// With instant pickup on, a ping from the inbox (push.js) checks right away; the timer is the backup.
 chrome.alarms.get("phone-inbox").then((alarm) => {
   if (!alarm) chrome.alarms.create("phone-inbox", { periodInMinutes: POLL_MINUTES, delayInMinutes: 0.1 });
 });
-chrome.alarms.onAlarm.addListener((alarm) => { if (alarm.name === "phone-inbox") poll(); });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== "phone-inbox") return;
+  listen().catch(() => {}); // reopens the listener if Chrome closed it
+  poll();
+});
 chrome.runtime.onStartup.addListener(() => { updateBadge(); poll(); });
+chrome.runtime.onMessage.addListener((msg) => { if (msg?.type === "phone-ping") poll(); });
+chrome.storage.onChanged.addListener((changes) => { if (changes.phoneSettings) listen().catch(() => {}); });
+listen().catch(() => {});
 globalThis.shopForTab = shopForTab; // lets the browser test press the button
 globalThis.pollPhoneInbox = poll;

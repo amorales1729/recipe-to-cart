@@ -71,3 +71,24 @@ test("search words: the extension asks, the task answers, the extension reads th
   assert.equal(g.get({ action: "answer", token, words: "not json" }).ok, false);
   assert.equal(g.sheets.Inbox.rows.length, 1, "the recipe inbox tab is left alone");
 });
+
+test("instant pickup: each new recipe pings the private channel the extension set", () => {
+  const g = fakeGoogle();
+  const token = g.ctx.setup();
+  g.post({ token, url: "https://x.example/soup" });
+  assert.equal(g.fetched.length, 0, "no channel set, no ping");
+
+  assert.equal(g.post({ action: "push", token, topic: "short" }).error, "bad topic");
+  assert.equal(g.post({ action: "push", token, topic: "rtc-abc/../../x" }).error, "bad topic");
+  assert.equal(g.post({ action: "push", token: "wrong", topic: "rtc-abcdefghijkmnpqrstu" }).error, "bad token");
+  assert.equal(g.post({ action: "push", token, topic: "rtc-abcdefghijkmnpqrstu" }).push, true);
+
+  g.post({ token, url: "https://x.example/stew" });
+  assert.deepEqual(g.fetched.map((f) => [f.url, f.method, f.payload]), [["https://ntfy.sh/rtc-abcdefghijkmnpqrstu", "post", "new recipe"]]);
+  g.post({ token, url: "https://x.example/stew" }); // already waiting: no second ping
+  assert.equal(g.fetched.length, 1);
+
+  assert.equal(g.get({ action: "push", token, topic: "" }).push, false);
+  g.post({ token, url: "https://x.example/pie" });
+  assert.equal(g.fetched.length, 1, "turned off");
+});

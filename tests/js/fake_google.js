@@ -8,6 +8,7 @@ export function fakeGoogle() {
   const props = {};
   let uuid = 0;
   const sheets = {};
+  const fetched = [];
   const makeSheet = () => {
     const rows = [];
     return {
@@ -27,7 +28,10 @@ export function fakeGoogle() {
         insertSheet: (n) => (sheets[n] = makeSheet()),
       }),
     },
-    PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => props[k] ?? null, setProperty: (k, v) => { props[k] = v; } }) },
+    PropertiesService: {
+      getScriptProperties: () => ({ getProperty: (k) => props[k] ?? null, setProperty: (k, v) => { props[k] = v; }, deleteProperty: (k) => { delete props[k]; } }),
+    },
+    UrlFetchApp: { fetch: (url, options) => { fetched.push({ url, ...options }); } },
     Utilities: { getUuid: () => `0000-${++uuid}` },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
     ContentService: {
@@ -42,6 +46,7 @@ export function fakeGoogle() {
   return {
     ctx,
     sheets,
+    fetched,
     get: (parameter) => out(ctx.doGet({ parameter })),
     post: (body, parameter = {}) => out(ctx.doPost({ parameter, postData: { contents: typeof body === "string" ? body : JSON.stringify(body) } })),
   };

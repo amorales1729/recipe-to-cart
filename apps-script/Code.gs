@@ -13,6 +13,8 @@
  *   action=add   url=<recipe link or shared text containing one>  title=<optional>
  *   action=list  -> waiting recipes
  *   action=ack   ids=<comma-separated ids>  -> marks them picked up
+ *   action=push  topic=<private ntfy.sh channel, or empty to stop>  -> each new recipe pings
+ *                that channel so Chrome picks it up right away. Set from the extension's Settings.
  *
  * Walmart search words, on the "Search words" tab. The extension sends ingredients it hasn't
  * seen, a scheduled task suggests a better Walmart search for each, and the extension
@@ -76,6 +78,7 @@ function handle_(params) {
     if (action === "add") return json_(add_(params));
     if (action === "list") return json_({ ok: true, recipes: list_() });
     if (action === "ack") return json_(ack_(String(params.ids || "").split(",")));
+    if (action === "push") return json_(push_(String(params.topic || "")));
     if (action === "ask") return json_(ask_(parseJson_(params.words, null)));
     if (action === "pending") return json_({ ok: true, words: pending_() });
     if (action === "answer") return json_(answer_(parseJson_(params.words, null)));
@@ -97,7 +100,33 @@ function add_(params) {
   }
   var id = Utilities.getUuid();
   sheet.appendRow([id, new Date(), url, title, "waiting", ""]);
+  ping_();
   return { ok: true, id: id };
+}
+
+// ---- instant pickup ----
+
+function push_(topic) {
+  var props = PropertiesService.getScriptProperties();
+  if (!topic) {
+    props.deleteProperty("PUSH_TOPIC");
+    return { ok: true, push: false };
+  }
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(topic)) return { ok: false, error: "bad topic" };
+  props.setProperty("PUSH_TOPIC", topic);
+  return { ok: true, push: true };
+}
+
+// Tell Chrome a recipe just arrived. The ping says nothing about the recipe; Chrome reads it
+// from this sheet as usual. If ntfy.sh can't be reached, Chrome's 5-minute check still finds it.
+function ping_() {
+  var topic = PropertiesService.getScriptProperties().getProperty("PUSH_TOPIC");
+  if (!topic) return;
+  try {
+    UrlFetchApp.fetch("https://ntfy.sh/" + topic, { method: "post", payload: "new recipe", muteHttpExceptions: true });
+  } catch (err) {
+    // Picked up at the next regular check instead.
+  }
 }
 
 function list_() {

@@ -121,6 +121,9 @@ On your PC, whenever Chrome is open, the extension checks the inbox when Chrome 
 - **Auto mode**: the cart list opens in a background tab and adds everything by itself, then opens
   your Walmart cart. Nothing is ever purchased.
 
+To have it start the moment you share (instead of within 5 minutes) and tell your phone when the
+cart is ready, see [hands-off.md](hands-off.md).
+
 Want it now instead of within 5 minutes? Click the gear for **Settings**, then **Check now**.
 
 Every link stays in the Google Sheet with its status (`waiting` or `picked up`), so you have a
