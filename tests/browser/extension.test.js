@@ -16,10 +16,35 @@ try {
   playwright = createRequire(import.meta.url)("playwright");
 } catch { /* not installed */ }
 
-const PRODUCT_PAGE = `<html><body><h1>Product</h1><span id=q>0</span>
-<button data-automation-id="atc" onclick="q.textContent=1;this.remove();p.hidden=false;fetch('/__test/added?id=ID')">Add to cart</button>
-<button id=p hidden aria-label="Increase quantity, Current Quantity" onclick="q.textContent=+q.textContent+1;fetch('/__test/added?id=ID')">+</button>
-<a href="/checkout">Check out</a></body></html>`;
+// Like Walmart's page: a suggested item's button is there first, the product's own button shows up a
+// moment later and ignores the first press (the page is still starting up), and the quantity shows
+// in the stepper's label.
+const PRODUCT_PAGE = `<html><body><h1>Product</h1>
+<a href="/cart" id=cart aria-label="Cart contains 2 items Total Amount $5.00">Cart</a>
+<div id=buy></div>
+<section><h2>Bought together</h2>
+<button aria-label="Add to cart - Cleveland Kitchen Classic Kimchi, 16 oz Pouch" onclick="fetch('/__test/added?id=wrong')">Add</button>
+<button aria-label="Increase quantity of Something Else, Current Quantity 2">+</button></section>
+<a href="/checkout">Check out</a>
+<script>
+let q = 0;
+function add() {
+  q++;
+  p.setAttribute("aria-label", "Increase quantity, Current Quantity " + q);
+  cart.setAttribute("aria-label", "Cart contains " + (2 + q) + " items");
+  fetch("/__test/added?id=ID");
+}
+setTimeout(() => {
+  buy.innerHTML = '<button data-automation-id="atc" id=atc>Add to cart</button><button id=p hidden>+</button>';
+  atc.onclick = () => { if (!window.ready) { window.ready = true; return; } add(); atc.remove(); p.hidden = false; };
+  p.onclick = add;
+}, 1500);
+</script></body></html>`;
+
+// The cart lists what was added, each with a Remove button, then suggestions that aren't in it.
+const cartPage = (ids) => `<html><body><h1>Cart</h1>
+${[...new Set(ids)].map((id) => `<div><a href="/ip/item/${id}">Item ${id}</a><button>Remove</button></div>`).join("")}
+<section><h2>You may also like</h2><a href="/ip/other/999">Other</a></section></body></html>`;
 
 function searchPage(q) {
   const id = String([...q].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 100000, 7));
@@ -51,7 +76,7 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
   manifest.host_permissions.push("https://recipes.example/*");
   writeFileSync(join(ext, "manifest.json"), JSON.stringify(manifest));
 
-  const added = [], checkoutHits = [];
+  const added = [], checkoutHits = [], lost = new Set(); // lost: looked added, but Walmart's cart doesn't have it
   let searches = 0;
   const ctx = await playwright.chromium.launchPersistentContext(join(tmp, "profile"), {
     headless: true,
@@ -70,6 +95,7 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
       if (url.pathname.startsWith("/checkout")) checkoutHits.push(url.href);
       if (url.pathname === "/search") searches++;
       if (url.pathname === "/search") return route.fulfill({ contentType: "text/html", body: searchPage(url.searchParams.get("q")) });
+      if (url.pathname === "/cart") return route.fulfill({ contentType: "text/html", body: cartPage(added.filter((id) => !lost.has(id))) });
       if (url.pathname.startsWith("/ip/")) return route.fulfill({ contentType: "text/html", body: PRODUCT_PAGE.replaceAll("ID", url.pathname.split("/").pop()) });
       return route.fulfill({ contentType: "text/html", body: `<html><body>${url.pathname}</body></html>` });
     });
@@ -94,7 +120,8 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
     const rows = cart.locator("#rows .item");
     const row = (name) => cart.locator("#rows .item", { hasText: name });
     assert.ok(await until(async () => (await rows.count()) === 11 && (await cart.locator("#rows select").count()) === 11
-      && (await cart.innerText("#status")).trim() === "", 120, cart), "every item searched");
+      && (await cart.innerText("#status")).trim() === "", 120, cart),
+      `every item searched: ${await cart.locator("#rows select").count()} of ${await rows.count()}, status "${await cart.innerText("#status")}"`);
     // Staples left off the cart are one list, alphabetical, each with Add to cart.
     assert.match(await cart.innerText("#left-off"), /Extra Virgin Olive Oil[\s\S]*Olive Oil/);
     assert.equal(await cart.locator("#left-off-items button", { hasText: "Add to cart" }).count(), 2);
@@ -147,15 +174,28 @@ test("recipe page to Walmart cart, all inside the extension", { skip: !process.e
     await row("Ditalini Pasta").locator(".change").click();
     assert.ok(await until(async () => /barilla ditalini/.test(await picked("Ditalini Pasta")), 30, cart));
 
+    // The broth looks added on its page, but Walmart's cart doesn't keep it, so it's marked and tried again.
+    const brothId = await worker.evaluate(async () => {
+      const { rows } = (await chrome.storage.local.get("shoppingList")).shoppingList;
+      const broth = rows["low sodium chicken broth"];
+      return broth.options[broth.pick].id;
+    });
+    lost.add(brothId);
     await cart.click("#add");
-    assert.ok(await until(async () => /Added 2 of 2/.test(await cart.innerText("#status")), 90, cart), await cart.innerText("#status"));
+    assert.ok(await until(async () => /Added 1 of 2/.test(await cart.innerText("#status")), 90, cart), await cart.innerText("#status"));
     assert.equal(added.length, 3); // pasta once, broth twice
+    assert.match(await row("Low Sodium Chicken Broth").locator(".state").innerText(), /Not in your Walmart cart/);
+    assert.ok(!added.includes("wrong"), "never the suggested item");
+    lost.clear();
+    await cart.click("#add");
+    assert.ok(await until(async () => /Added 1 of 1/.test(await cart.innerText("#status")), 90, cart), await cart.innerText("#status"));
+    assert.equal(added.length, 5); // pasta once, broth twice and twice again
 
     // A pantry staple can still go in the cart from the kitchen section.
     await cart.locator("#left-off-items li").first().locator("button").click();
     assert.ok(await until(async () => /In cart/.test(await cart.locator("#left-off-items li").first().innerText()), 60, cart),
       await cart.locator("#left-off-items li").first().innerText());
-    assert.equal(added.length, 4);
+    assert.equal(added.length, 6);
     assert.equal(await cart.innerText("#extra-count"), "1");
     assert.ok(await until(() => ctx.pages().some((p) => p.url() === "https://www.walmart.com/cart"), 10, cart));
     assert.deepEqual(checkoutHits, []);

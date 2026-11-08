@@ -5,7 +5,7 @@ import * as storage from "./lib/storage.js";
 import { parseSearchPage, searchUrl } from "./lib/walmart.js";
 import { askForWords, pullWords } from "./inbox.js";
 import { notifyPhone } from "./push.js";
-import { addToCartInPage, isBlockedUrl, readPageHtml } from "./walmart_page.js";
+import { addToCartInPage, isBlockedUrl, readCartInPage, readPageHtml } from "./walmart_page.js";
 
 const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -77,8 +77,9 @@ async function openInWorker(url) {
   const tabId = await workerTab();
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => { chrome.tabs.onUpdated.removeListener(listener); reject(new Error("Walmart took too long to load.")); }, 45000);
-    function listener(id, info) {
-      if (id === tabId && info.status === "complete") {
+    // A brand-new tab can still report its blank page finishing, so wait for the Walmart page itself.
+    function listener(id, info, tab) {
+      if (id === tabId && info.status === "complete" && !(tab.url || "").startsWith("about:")) {
         clearTimeout(timer);
         chrome.tabs.onUpdated.removeListener(listener);
         resolve();
@@ -442,15 +443,29 @@ async function searchWalmart(url) {
   return parseSearchPage(page.html);
 }
 
+// Put a product in the cart. If it doesn't go in, the page is loaded fresh and tried once more;
+// that's safe because a second try only tops up what's already there.
 async function addProduct(product, qty) {
-  await openInWorker(product.url);
-  let result = await runInWorker(addToCartInPage, [qty]);
-  if (result.botCheck) {
-    await waitForHuman();
+  const attempt = async () => {
     await openInWorker(product.url);
-    result = await runInWorker(addToCartInPage, [qty]);
+    let result = await runInWorker(addToCartInPage, [qty, product.name]);
+    if (result.botCheck) {
+      await waitForHuman();
+      await openInWorker(product.url);
+      result = await runInWorker(addToCartInPage, [qty, product.name]);
+    }
+    return result;
+  };
+  let result;
+  try {
+    result = await attempt();
+  } catch (e) {
+    if (e instanceof Stopped) throw e;
+    result = { ok: false, message: e.message };
   }
-  return result;
+  if (result.ok || stopRequested) return result;
+  await sleep(2000 + Math.random() * 1500);
+  return attempt();
 }
 
 // Search Walmart for one row. A query you typed is remembered for that ingredient.
@@ -566,12 +581,16 @@ function addAll() {
       await sleep(1200 + Math.random() * 1500);
     }
     session.done = true;
+    setStatus("Checking your Walmart cart…");
+    ok -= await checkCart(todo.filter((r) => r.result?.ok));
     if (workerTabId !== null) {
-      await chrome.tabs.update(workerTabId, { url: "https://www.walmart.com/cart", active: true });
+      await chrome.tabs.update(workerTabId, { active: true });
       workerTabId = null; // that tab is your cart now; later adds use a fresh background tab
     }
+    const missing = todo.length - ok;
     setStatus(
       `<strong>Added ${ok} of ${todo.length} items.</strong> Your Walmart cart is open in the next tab.
+       ${missing ? `The ${missing === 1 ? "one" : missing} marked in red didn't go in. Press Add to try ${missing === 1 ? "it" : "them"} again, or open ${missing === 1 ? "it" : "them"} on Walmart.` : ""}
        Review it and check out yourself whenever you're ready.`,
       ok === todo.length ? "ok" : "bad");
     if (session.auto) await notifyPhone(cartReadyAlert());
@@ -594,6 +613,30 @@ function cartReadyAlert() {
     click: "https://www.walmart.com/cart",
     tags: missed.length || notFound.length ? "shopping_cart,warning" : "shopping_cart",
   };
+}
+
+// Walmart's own cart is the last word: an item it doesn't show isn't marked as added, so pressing
+// Add again tries just those. Returns how many turned out to be missing.
+async function checkCart(addedRows) {
+  let items = null;
+  try {
+    await openInWorker("https://www.walmart.com/cart");
+    items = await runInWorker(readCartInPage);
+  } catch { /* couldn't read the cart; leave the rows as they are */ }
+  if (!items) return 0;
+  const ids = new Set(items.map((x) => x.id));
+  const start = (name) => String(name).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").slice(0, 5).join(" ");
+  const names = items.map((x) => start(x.name));
+  let missing = 0;
+  for (const row of addedRows) {
+    const product = selected(row);
+    if (!product || ids.has(String(product.id)) || names.some((n) => n && n.startsWith(start(product.name)))) continue;
+    row.result = { ok: false, message: "Not in your Walmart cart. Walmart didn't keep it.", url: product.url };
+    showResult(row);
+    missing++;
+  }
+  if (missing) await save();
+  return missing;
 }
 
 function escapeHtml(s) {

@@ -184,3 +184,16 @@ test("picks: frozen when the recipe asks for frozen", () => {
   ]);
   assert.equal(options[0].id, "2");
 });
+
+test("picks: a can of corn is canned corn, never corn oil, corn starch or a fresh cob", () => {
+  const products = [
+    p("1", "Mazola Corn Oil Plus, 40 fl oz", 5.26),
+    p("2", "Fresh Sweet Corn on the Cob, Each", 0.5),
+    p("3", "Great Value Corn Starch, 16 oz", 1.5),
+    p("4", "Great Value Whole Kernel Corn, 15.25 oz Can", 0.68),
+  ];
+  const [canned] = buildPlan([{ title: "Chili", lines: ["1 (15 ounce) can corn, drained"] }], []).items;
+  assert.equal(productOptions(canned, products)[0].id, "4");
+  const [fresh] = buildPlan([{ title: "Salad", lines: ["1 cup corn"] }], []).items;
+  assert.equal(productOptions({ ...fresh, query: "corn" }, products.filter((x) => x.id !== "2"))[0].id, "4");
+});
