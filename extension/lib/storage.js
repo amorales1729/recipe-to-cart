@@ -1,5 +1,4 @@
 // Everything the extension remembers lives in Chrome's own storage on this computer.
-import { DEFAULT_PANTRY, ingredientKey } from "./grocery.js";
 
 const area = () => chrome.storage.local;
 
@@ -24,19 +23,6 @@ export async function saveRecipe(recipe) {
 
 export async function deleteRecipe(id) {
   await set("recipes", (await recipes()).filter((r) => r.id !== id));
-}
-
-export async function pantry() {
-  return get("pantry", DEFAULT_PANTRY);
-}
-
-export async function addToPantry(name) {
-  const list = await pantry();
-  if (!list.some((p) => ingredientKey(p) === ingredientKey(name))) await set("pantry", [...list, name.trim().toLowerCase()]);
-}
-
-export async function removeFromPantry(name) {
-  await set("pantry", (await pantry()).filter((p) => ingredientKey(p) !== ingredientKey(name)));
 }
 
 export async function searchTerms() {

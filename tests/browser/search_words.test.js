@@ -83,10 +83,14 @@ test("cart page uses suggested searches and sends new ingredients for the next r
     });
     let cart = null;
     assert.ok(await until(() => (cart = ctx.pages().find((p) => p.url().includes("cart.html"))), 10));
-    const row = (name) => cart.locator("#rows tr", { hasText: name });
-    assert.ok(await until(async () => (await cart.locator("#rows tr").count()) === 11, 10));
-    assert.match(await row("Ditalini Pasta").innerText(), /Searched: barilla ditalini pasta \(suggested\)/);
-    assert.match(await row("Cut Up Fryer Chicken").innerText(), /Searched: whole chicken cut up · change/);
+    const row = (name) => cart.locator("#rows .item", { hasText: name });
+    assert.ok(await until(async () => (await cart.locator("#rows .item").count()) === 11, 10));
+    // The row leads with the Walmart search; the recipe's wording is underneath.
+    const searched = async (name) => (await row(name).locator(".query").innerText()).toLowerCase();
+    assert.equal(await searched("Ditalini Pasta"), "barilla ditalini pasta");
+    assert.equal(await searched("Cut Up Fryer Chicken"), "whole chicken cut up");
+    assert.equal(await row("Cut Up Fryer Chicken").locator(".from").innerText(), "(Cut Up Fryer Chicken)");
+    assert.equal(await row("Cut Up Fryer Chicken").locator(".tags .tag").innerText(), "Italian Chicken Soup");
 
     // The other ten went to the inbox with the rules' guess, once.
     const pendingKeys = () => g.get({ action: "pending", token }).words.map((w) => w.key);
@@ -101,11 +105,12 @@ test("cart page uses suggested searches and sends new ingredients for the next r
     await worker.evaluate(() => globalThis.pollPhoneInbox());
     assert.deepEqual((await storage()).suggestedWords, { "ditalini pasta": "barilla ditalini pasta", "cut up fryer chicken": "whole fryer chicken cut up" });
 
-    // Opening the list again uses it and doesn't send anything twice.
+    // Starting the list over uses it and doesn't send anything twice.
     const rowsBefore = g.sheets["Search words"].rows.length;
-    await cart.reload();
-    assert.ok(await until(async () => (await cart.locator("#rows tr").count()) === 11, 10));
-    assert.match(await row("Cut Up Fryer Chicken").innerText(), /Searched: whole fryer chicken cut up \(suggested\)/);
+    assert.ok(await until(() => cart.locator("#restart").isVisible(), 60), "first search finished");
+    cart.once("dialog", (d) => d.accept());
+    await cart.click("#restart");
+    assert.ok(await until(async () => (await searched("Cut Up Fryer Chicken")) === "whole fryer chicken cut up", 10));
     await cart.waitForTimeout(1000);
     assert.equal(g.sheets["Search words"].rows.length, rowsBefore);
   } finally {

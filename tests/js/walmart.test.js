@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { AISLES, aisleFor } from "../../extension/lib/aisles.js";
 import { buildPlan, productOptions } from "../../extension/lib/plan.js";
 import { pickCheapest, pickProduct } from "../../extension/lib/rank.js";
 import { searchQuery } from "../../extension/lib/search.js";
@@ -87,9 +88,11 @@ test("plan: shopping list, pantry line, spice list, your own searches", () => {
   const recipes = [{ title: "Tacos", lines: ["1 lb ground beef", "2 tsp chili powder", "1 tbsp olive oil", "Salt and pepper", "1 onion"] }];
   const plan = buildPlan(recipes, ["olive oil"], { onion: "white onion" });
   assert.deepEqual(plan.recipes, ["Tacos"]);
-  assert.deepEqual(plan.items.map((i) => [i.name, i.amount, i.query]), [["ground beef", "1 lb", "ground beef"], ["onion", "1", "white onion"]]);
-  assert.deepEqual(plan.pantrySkipped, [{ name: "olive oil", amount: "1 tbsp", searchUrl: searchUrl("olive oil") }]);
-  assert.deepEqual(plan.spices, [{ name: "chili powder", amount: "2 tsp", searchUrl: searchUrl("chili powder") }]);
+  assert.deepEqual(plan.items.map((i) => [i.name, i.amount, i.query]), [["ground beef", "1 lb", "ground beef"], ["onion", "1 (about 5 oz)", "white onion"]]);
+  const brief = ({ name, amount, searchUrl }) => ({ name, amount, searchUrl });
+  assert.deepEqual(plan.pantrySkipped.map(brief), [{ name: "olive oil", amount: "1 tbsp", searchUrl: searchUrl("olive oil") }]);
+  assert.deepEqual(plan.spices.map(brief), [{ name: "chili powder", amount: "2 tsp", searchUrl: searchUrl("chili powder") }]);
+  assert.deepEqual([plan.spices[0].quantity, plan.spices[0].unit, plan.spices[0].query], [2, "teaspoon", "chili powder"]);
 });
 
 test("plan: your searches win, then suggested ones, then the rules", () => {
@@ -117,4 +120,67 @@ test("checkout is always blocked", () => {
   for (const url of ["https://www.walmart.com/checkout", "https://www.walmart.com/checkout/review-order?x=1",
     "https://www.walmart.com/payment", "https://www.walmart.com/place-order"]) assert.ok(isBlockedUrl(url), url);
   for (const url of ["https://www.walmart.com/cart", "https://www.walmart.com/ip/x/222", searchUrl("heavy cream")]) assert.ok(!isBlockedUrl(url), url);
+});
+
+test("product photos come along with search results", () => {
+  const items = [
+    { __typename: "Product", usItemId: "1", name: "Onion", price: 1, imageInfo: { thumbnailUrl: "https://i5.walmartimages.com/a.jpg" } },
+    { __typename: "Product", usItemId: "2", name: "Leek", price: 1, image: "https://i5.walmartimages.com/b.jpg" },
+    { __typename: "Product", usItemId: "3", name: "Kale", price: 1 },
+  ];
+  const html = `<script id="__NEXT_DATA__">${JSON.stringify({ props: { items } })}</script>`;
+  assert.deepEqual(parseSearchPage(html).map((p) => p.image),
+    ["https://i5.walmartimages.com/a.jpg", "https://i5.walmartimages.com/b.jpg", ""]);
+});
+
+test("aisles group the cart page like a walk through the store", () => {
+  const cases = [
+    ["Cut Up Fryer Chicken", "", "meat"], ["Low Sodium Chicken Broth", "cup", "pantry"], ["Whole Tomatoes", "can", "pantry"],
+    ["Green Bell Peppers", "", "produce"], ["Heavy Cream", "cup", "dairy"], ["peanut butter", "tablespoon", "pantry"],
+    ["eggs", "", "dairy"], ["flour tortillas", "", "bakery"], ["raisins", "cup", "baking"], ["frozen peas", "bag", "frozen"],
+    ["Ditalini Pasta", "box", "pantry"], ["taco seasoning", "packet", "pantry"], ["paper towels", "", "other"],
+  ];
+  for (const [name, unit, want] of cases) assert.equal(aisleFor(name, unit), want, name);
+  assert.ok(cases.every(([, , a]) => AISLES.some(([id]) => id === a)));
+});
+
+test("prices: a $0 on the search card isn't a price, and cents are cents", () => {
+  const items = [
+    { __typename: "Product", usItemId: "1", name: "Russet Potatoes, 5 lb", price: 0, priceInfo: { linePrice: "$3.47" } },
+    { __typename: "Product", usItemId: "2", name: "Banana, Each", price: 0, priceInfo: { linePrice: "27¢" } },
+    { __typename: "Product", usItemId: "3", name: "Mixed Peppers", price: 0, priceInfo: { priceRangeString: "Options from $1.50 – $3.00" } },
+    { __typename: "Product", usItemId: "4", name: "Mystery Item", price: 0, priceInfo: {} },
+    { __typename: "Product", usItemId: "5", name: "Celery", priceInfo: { currentPrice: { price: 1.98, priceString: "$1.98" } } },
+  ];
+  const html = `<script id="__NEXT_DATA__">${JSON.stringify({ props: { items } })}</script>`;
+  assert.deepEqual(parseSearchPage(html).map((x) => x.price), [3.47, 0.27, 1.5, null, 1.98]);
+});
+
+test("picks: 5 potatoes is about 2.3 lb, so the cheapest bag that covers it, never frozen or canned", () => {
+  const [item] = buildPlan([{ title: "Stew", lines: ["5 potatoes"] }], []).items;
+  assert.equal(item.amount, "5 (about 2.3 lb)");
+  const products = [
+    p("1", "Ore-Ida Golden Crinkles French Fried Potatoes, 32 oz", 1.98),
+    p("2", "Great Value Frozen Diced Potatoes, 32 oz", 2.12),
+    p("3", "Great Value Whole White Potatoes, 15 oz Can", 0.78),
+    p("4", "Fresh Russet Potatoes, 5 lb Bag", 3.47),
+    p("5", "Fresh Russet Potatoes, 3 lb Bag", 2.97),
+    p("6", "Fresh Russet Potato, Each", 0.88),
+    p("7", "Fresh Russet Potatoes, 1 lb Bag", 1.24),
+    p("8", "Potatoes, Unpriced Bundle", null),
+  ];
+  const options = productOptions(item, products);
+  assert.deepEqual(options.slice(0, 4).map((o) => [o.id, o.qty]), [["5", 1], ["4", 1], ["7", 3], ["6", 5]]);
+  assert.ok(options[0].cheapest);
+  assert.ok(!options.some((o) => ["1", "2", "3"].includes(o.id) && o.cheapest));
+  assert.ok(!options.some((o) => o.id === "8"), "no unpriced products when others have prices");
+});
+
+test("picks: frozen when the recipe asks for frozen", () => {
+  const [item] = buildPlan([{ title: "Soup", lines: ["1 bag frozen peas"] }], []).items;
+  const options = productOptions({ ...item, query: "sweet peas" }, [
+    p("1", "Del Monte Sweet Peas, 15 oz Can", 0.98),
+    p("2", "Great Value Frozen Sweet Peas, 12 oz", 1.12),
+  ]);
+  assert.equal(options[0].id, "2");
 });

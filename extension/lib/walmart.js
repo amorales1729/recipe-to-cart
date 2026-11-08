@@ -9,7 +9,7 @@ export function searchUrl(query) {
   return `${BASE}/search?q=${encodeURIComponent(query).replace(/%20/g, "+")}`;
 }
 
-/** Products {id, name, url, price, available, sponsored} from a search page's HTML or its __NEXT_DATA__ JSON text. */
+/** Products {id, name, url, image, price, available, sponsored} from a search page's HTML or its __NEXT_DATA__ JSON text. */
 export function parseSearchPage(htmlOrJson) {
   let text = htmlOrJson || "";
   const m = text.match(NEXT_DATA);
@@ -32,6 +32,7 @@ export function parseSearchPage(htmlOrJson) {
       id,
       name,
       url: url.split("?")[0],
+      image: image(item),
       price: price(item),
       available: available(item),
       sponsored: Boolean(item.isSponsoredFlag),
@@ -49,19 +50,38 @@ function* walkItems(obj) {
   }
 }
 
+// A price of 0 means Walmart didn't put one on the search card (items with options, or sold by
+// weight), so the text price is used instead, and no price at all beats a made-up $0.
 function price(item) {
-  if (typeof item.price === "number") return item.price;
   const info = item.priceInfo || {};
-  for (const key of ["currentPrice", "linePrice"]) {
-    let v = info[key];
-    if (v && typeof v === "object") v = v.price || v.priceString;
-    if (typeof v === "number") return v;
-    if (typeof v === "string") {
-      const m = v.replace(/,/g, "").match(/\d+(?:\.\d+)?/);
-      if (m) return parseFloat(m[0]);
-    }
+  const current = info.currentPrice;
+  const candidates = [
+    current && typeof current === "object" ? current.price : current,
+    item.price,
+    current && typeof current === "object" ? current.priceString : null,
+    info.linePrice, info.linePriceDisplay, info.itemPrice, info.priceRangeString, info.minPrice,
+  ];
+  for (const v of candidates) {
+    const n = typeof v === "number" ? v : typeof v === "string" ? priceText(v) : null;
+    if (n > 0) return n;
   }
   return null;
+}
+
+/** "$2.97" -> 2.97, "27¢" -> 0.27, "Options from $1.50 – $3.00" -> 1.5. */
+export function priceText(text) {
+  const t = String(text).replace(/,/g, "");
+  const dollars = t.match(/\$\s*(\d+(?:\.\d+)?)/);
+  if (dollars) return parseFloat(dollars[1]);
+  const cents = t.match(/(\d+(?:\.\d+)?)\s*(?:¢|c\b)/);
+  if (cents) return parseFloat(cents[1]) / 100;
+  const plain = t.match(/^\s*(\d+(?:\.\d+)?)\s*$/);
+  return plain ? parseFloat(plain[1]) : null;
+}
+
+function image(item) {
+  const url = (item.imageInfo && item.imageInfo.thumbnailUrl) || item.image || item.imageUrl || "";
+  return typeof url === "string" && /^https:\/\//.test(url) ? url : "";
 }
 
 function available(item) {

@@ -3,8 +3,8 @@ import { formatAmount } from "./display.js";
 import { isSpice } from "./spices.js";
 import { convert, sameKind } from "./units.js";
 
-// Staples assumed to be in the kitchen. They're left off the shopping list; edit them on the
-// Recipes page under "Pantry staples".
+// Staples assumed to be in the kitchen, even before the search-words task has marked any.
+// They're left off the shopping list but still shown on it with an Add to cart button.
 export const DEFAULT_PANTRY = [
   "water", "ice",
   "oil", "cooking oil", "olive oil", "extra virgin olive oil", "light olive oil",
