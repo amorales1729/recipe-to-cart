@@ -51,6 +51,45 @@ export function toQuantity(amount, unit) {
   return m ? { kind: m[0], amount: amount * m[1] } : null;
 }
 
+// About what one weighs, in grams, for things recipes count ("5 potatoes") but stores sell by
+// weight ("5 lb bag"). Medium sizes, from USDA averages and typical store produce.
+const EACH_GRAMS = [
+  [/sweet potato|yam/, 200], [/potato/, 213], [/shallot/, 40], [/onion/, 150],
+  [/carrot/, 61], [/celery/, 40], [/bell pepper|green pepper|red pepper|yellow pepper|orange pepper/, 150],
+  [/jalape/, 14], [/roma tomato|plum tomato/, 62], [/cherry tomato|grape tomato/, 17], [/tomato/, 123],
+  [/zucchini|yellow squash/, 200], [/cucumber/, 300], [/apple/, 180], [/lemon/, 85], [/lime/, 67],
+  [/orange/, 140], [/banana/, 118], [/avocado/, 170], [/mushroom/, 18], [/beet/, 82], [/turnip/, 122],
+  [/chicken breast/, 227], [/chicken thigh/, 113], [/drumstick/, 110], [/pork chop/, 200],
+];
+// Per clove or head, not per bulb or plant.
+const PART_GRAMS = { clove: [/garlic/, 5], head: [/garlic/, 50], stalk: [/celery/, 40], rib: [/celery/, 40] };
+const HEAD_GRAMS = [[/cabbage/, 900], [/cauliflower/, 600], [/lettuce|romaine/, 600], [/broccoli/, 300]];
+// Processed versions are bought by the package, not by the each.
+const NOT_FRESH = /paste|sauce|soup|juice|powder|canned|broth|dried|frozen|chips|flakes|seasoning|salsa|jam|zest/;
+
+/** Grams for one of these ("1 onion", "1 clove garlic"), or null if it isn't something sold by weight. */
+export function gramsEach(ingredientName, unit = "") {
+  const name = String(ingredientName || "").toLowerCase();
+  const u = String(unit || "").toLowerCase().replace(/e?s$/, "");
+  if (NOT_FRESH.test(name)) return null;
+  if (u === "head") {
+    const hit = HEAD_GRAMS.find(([re]) => re.test(name));
+    if (hit) return hit[1];
+  }
+  if (PART_GRAMS[u]) return PART_GRAMS[u][0].test(name) ? PART_GRAMS[u][1] : null;
+  if (u && !["medium", "large", "small", "whole"].includes(u)) return null;
+  const hit = EACH_GRAMS.find(([re]) => re.test(name));
+  return hit ? hit[1] : null;
+}
+
+/** "5 potatoes" -> "about 2.3 lb", for showing next to the count. Null when there's no estimate. */
+export function approxWeight(amount, unit, ingredientName) {
+  const each = amount > 0 ? gramsEach(ingredientName, unit) : null;
+  if (!each) return null;
+  const oz = (amount * each) / 28.3495;
+  return oz < 16 ? `about ${Math.max(1, Math.round(oz))} oz` : `about ${Math.round((oz / 16) * 10) / 10} lb`;
+}
+
 const SIZE = new RegExp(
   String.raw`(\d+(?:\.\d+)?)\s*-?\s*(fl\.?\s*oz\.?|fluid ounces?|oz\.?|ounces?|lbs?\.?|pounds?|` +
     String.raw`g|grams?|kg|ml|l|liters?|litres?|gal(?:lon)?s?|qt|quarts?|pt|pints?|ct|count|pk|pack)(?![a-z])`,
@@ -85,12 +124,16 @@ export function packagesNeeded(needAmount, needUnit, productName, ingredientName
   if (needAmount == null || needAmount <= 0) return 1;
   const unitWord = String(needUnit || "").toLowerCase();
   const size = parseSize(productName);
-  const need = toQuantity(needAmount, needUnit);
+  let need = toQuantity(needAmount, needUnit);
 
   if (size === null) {
-    // Unknown package size: buy one per counted item ("2 cans"), else one package.
-    return need === null && PACKAGE_UNITS.has(unitWord) ? Math.max(1, Math.ceil(needAmount)) : 1;
+    // Unknown package size: buy one per counted item ("2 cans"; "5 potatoes" sold each), else one package.
+    const sold1by1 = PACKAGE_UNITS.has(unitWord) || (!unitWord && /\beach\b|\bea\b/i.test(productName));
+    return need === null && sold1by1 ? Math.max(1, Math.ceil(needAmount)) : 1;
   }
+  // "5 potatoes" against a "5 lb bag": weigh them first (about 2.3 lb, so one bag).
+  const each = need === null ? gramsEach(ingredientName, needUnit) : null;
+  if (each && size[1] !== "ct") need = { kind: "mass", amount: needAmount * each };
   let [n, unit] = size;
   if (unit === "ct") {
     // "6 ct" eggs for "8 eggs" -> 2 packs. Measured needs ("1 cup") just get one pack.

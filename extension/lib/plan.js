@@ -5,7 +5,7 @@ import { amountText, buildGroceryList } from "./grocery.js";
 import { parseLines } from "./ingredients.js";
 import { pickCheapest } from "./rank.js";
 import { searchQuery } from "./search.js";
-import { packagesNeeded } from "./units.js";
+import { approxWeight, packagesNeeded } from "./units.js";
 import { STORE_BRANDS, searchUrl } from "./walmart.js";
 
 export const MAX_OPTIONS = 5;
@@ -33,7 +33,11 @@ export function buildPlan(recipes, pantry, searchTerms = {}, suggestedWords = {}
     if (item.category === "spice") spices.push(leftOff);
     else if (item.skipReason) pantrySkipped.push(leftOff);
     else if (!searchTerms[item.key] && suggestedWords[item.key] === PANTRY_WORD) pantrySkipped.push(leftOff);
-    else items.push({ ...item, aisle: aisleFor(item.name, item.unit), amount: amountText(item), query, querySource, searchUrl: searchUrl(query) });
+    else {
+      const weight = approxWeight(item.quantity, item.unit, item.name);
+      const amount = weight ? `${amountText(item)} (${weight})` : amountText(item);
+      items.push({ ...item, aisle: aisleFor(item.name, item.unit), amount, query, querySource, searchUrl: searchUrl(query) });
+    }
   }
   return { recipes: recipes.map((r) => r.title), items, pantrySkipped, spices };
 }
@@ -41,7 +45,14 @@ export function buildPlan(recipes, pantry, searchTerms = {}, suggestedWords = {}
 /** The products to offer for one item, cheapest good match first. `usual` is last time's pick. */
 export function productOptions(item, products, usual = null) {
   const qty = (p) => packagesNeeded(item.quantity, item.unit, p.name, item.name);
-  const [ranked, nGood] = pickCheapest(products, item.query, STORE_BRANDS, (p) => p.price * qty(p));
+  // Fresh produce and meat: frozen, canned and jarred versions only if the recipe asks for them.
+  // A recipe that says frozen gets frozen, not canned.
+  const fresh = ["produce", "meat"].includes(item.aisle || aisleFor(item.name, item.unit)) || /\bfrozen\b/i.test(item.name);
+  // And frozen even if the search wording dropped the word.
+  const query = /\bfrozen\b/i.test(item.name) && !/\bfrozen\b/i.test(item.query) ? `frozen ${item.query}` : item.query;
+  let [ranked, nGood] = pickCheapest(products, query, STORE_BRANDS, (p) => p.price * qty(p), fresh);
+  // Products Walmart shows no price for can't be compared, so they're only offered when nothing has one.
+  if (ranked.some((p) => p.price > 0)) ranked = ranked.filter((p) => p.price > 0);
   return ranked.slice(0, MAX_OPTIONS).map((p, i) => ({
     ...p,
     qty: qty(p),
