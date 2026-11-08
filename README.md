@@ -75,8 +75,11 @@ came up with, and a scheduled task suggests better Walmart wording that the exte
 
 - **"Walmart wants to check you're human"**: finish the check in the Walmart tab, then click
   **I'm done, continue**.
-- **An item says "No Add to cart button"**: it may be out of stock or need a pickup or delivery
-  choice. Click **Open** next to it and add it by hand.
+- **An item says "No Add to cart button" or "Out of stock"**: click **Open** next to it and add it
+  by hand, or pick another product in its dropdown.
+- **An item says "Not in your Walmart cart"**: after adding, the extension opens your Walmart cart
+  and checks every item is really there. Anything Walmart didn't keep turns red. Click **Add** again
+  to try just those.
 
 ## For developers
 

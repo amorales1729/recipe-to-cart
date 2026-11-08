@@ -7,6 +7,11 @@ const AVOID_WORDS = [
   // Fresh unless the recipe asks otherwise: "potatoes" means a bag of potatoes, not fries.
   "frozen", "fries", "french fried", "hash brown", "tots", "instant", "dehydrated", "freeze dried", "steamable",
 ];
+// Words that make it a different product: "corn" isn't corn oil or corn starch, "chicken" isn't broth.
+const OTHER_PRODUCT = [
+  "oil", "starch", "flour", "meal", "syrup", "juice", "extract", "powder", "broth", "stock", "bouillon",
+  "bread", "muffin", "cereal", "cracker", "popcorn", "tortilla", "pasta", "noodle", "kimchi", "relish", "salsa",
+];
 // Produce and meat from a can or jar only when the recipe says so.
 const PACKED = /\b(cans?|canned|jars?|jarred|pouch)\b/;
 
@@ -14,7 +19,8 @@ const PACKED = /\b(cans?|canned|jars?|jarred|pouch)\b/;
 function words(text) {
   return new Set(
     (String(text).toLowerCase().match(/[a-z]+/g) || []).map((w) =>
-      w.length > 4 && w.endsWith("oes") ? w.slice(0, -2)
+      w === "canned" ? "can" : w === "jarred" ? "jar"
+        : w.length > 4 && w.endsWith("oes") ? w.slice(0, -2)
         : w.length > 3 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w,
     ),
   );
@@ -27,6 +33,7 @@ export function matchScore(product, query, fresh = false) {
   let score = (10 * [...want].filter((w) => have.has(w)).length) / want.size;
   const title = product.name.toLowerCase(), q = String(query).toLowerCase();
   for (const word of AVOID_WORDS) if (title.includes(word) && !q.includes(word)) score -= 4;
+  for (const word of OTHER_PRODUCT) if (have.has(word) && !want.has(word)) score -= 4;
   if (fresh && PACKED.test(title) && !PACKED.test(q)) score -= 4;
   return score;
 }
